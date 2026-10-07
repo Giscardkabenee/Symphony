@@ -100,4 +100,5 @@
     <string name="lyrics_searching">Looking for lyrics…</string>
     <string name="lyrics_error">The lyrics search failed</string>
     <string name="retry">Try again</string>
+    <string name="tap_for_lyrics">Tap for lyrics</string>
 </resources>

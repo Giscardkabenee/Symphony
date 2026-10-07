@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.QueueMusic
@@ -148,6 +149,37 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     )
                 )
             }
+            // The cover sits behind the controls and dissolves downwards into the blurred backdrop.
+            if (settings.fullCover) {
+                val coverAlpha by animateFloatAsState(if (mode == MODE_COVER) 1f else 0f, tween(350), label = "coverAlpha")
+                Crossfade(
+                    targetState = song,
+                    animationSpec = tween(600),
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(0.6f).graphicsLayer { alpha = coverAlpha },
+                    label = "coverArt",
+                ) { s ->
+                    Artwork(
+                        s.albumId,
+                        s.album,
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                            .drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        0f to Color.Black,
+                                        0.5f to Color.Black,
+                                        0.78f to Color.Black.copy(alpha = 0.45f),
+                                        1f to Color.Transparent,
+                                    ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            },
+                        RectangleShape,
+                    )
+                }
+            }
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxWidth().weight(1f)) {
                     Crossfade(targetState = mode, animationSpec = tween(320), modifier = Modifier.fillMaxSize(), label = "mode") { shown ->
@@ -215,33 +247,8 @@ private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boole
         ) { _, amount -> total += amount }
     }
     if (fullCover) {
-        // The cover fills the area and melts into the blurred backdrop at the top and bottom.
-        Box(Modifier.fillMaxSize().then(drag).then(taps)) {
-            Artwork(
-                song.albumId,
-                song.album,
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        compositingStrategy = CompositingStrategy.Offscreen
-                    }
-                    .drawWithContent {
-                        drawContent()
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                0f to Color.Black.copy(alpha = 0.6f),
-                                0.12f to Color.Black,
-                                0.62f to Color.Black,
-                                1f to Color.Transparent,
-                            ),
-                            blendMode = BlendMode.DstIn,
-                        )
-                    },
-                RectangleShape,
-            )
-        }
+        // The artwork itself is drawn behind the whole player; this area only takes the gestures.
+        Box(Modifier.fillMaxSize().then(drag).then(taps))
     } else {
         Box(Modifier.fillMaxSize().then(drag).then(taps).statusBarsPadding().padding(32.dp), contentAlignment = Alignment.Center) {
             Artwork(
@@ -417,13 +424,22 @@ private fun Controls(
             }
         }
 
-        if (lyricLine != null) {
+        if (mode == MODE_COVER) {
+            // Current lyric line, or just the invitation, always one tap away from the full lyrics.
+            val invite = stringResource(R.string.tap_for_lyrics)
             Row(
-                modifier = Modifier.fillMaxWidth().clickable { onMode(MODE_LYRICS) }.padding(vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth().clickable { onMode(MODE_LYRICS) }.padding(top = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(lyricLine, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, color = Soft, modifier = Modifier.weight(1f, fill = false))
-                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = Soft, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = Soft, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (lyricLine.isNullOrBlank()) invite else "$lyricLine • $invite",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.92f),
+                )
             }
         } else {
             Spacer(Modifier.height(8.dp))
@@ -495,14 +511,8 @@ private fun Controls(
             Icon(Icons.Rounded.VolumeUp, contentDescription = volumeLabel, tint = Soft, modifier = Modifier.size(20.dp))
         }
 
-        // Actions grouped in one translucent capsule so they read as a single control.
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
-                .height(58.dp)
-                .liquidDrop(CircleShape, Color.White.copy(alpha = 0.12f))
-                .padding(horizontal = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -517,7 +527,6 @@ private fun Controls(
                 label = stringResource(R.string.favorite),
                 active = favorite,
             ) { vm.toggleFavorite(song.id) }
-            ToggleIcon(Icons.Rounded.Lyrics, stringResource(R.string.lyrics), mode == MODE_LYRICS) { onMode(MODE_LYRICS) }
             ToggleIcon(Icons.Rounded.QueueMusic, stringResource(R.string.queue), mode == MODE_QUEUE) { onMode(MODE_QUEUE) }
         }
     }
@@ -580,28 +589,19 @@ private fun ThinSlider(
     }
 }
 
-/** One slot of the action capsule: a white disc with a dark icon marks the active state. */
+/** Plain icon; a soft translucent disc behind it marks the active state. */
 @Composable
 private fun ToggleIcon(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
-    val fill by animateColorAsState(if (active) Color.White else Color.Transparent, tween(220), label = "fill")
-    val tint by animateColorAsState(if (active) Color(0xFF111114) else Color.White.copy(alpha = 0.88f), tween(220), label = "tint")
-    val scale by animateFloatAsState(
-        targetValue = if (active) 1f else 0.94f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium),
-        label = "scale",
-    )
+    val fill by animateColorAsState(if (active) Color.White.copy(alpha = 0.22f) else Color.Transparent, tween(220), label = "fill")
+    val tint by animateColorAsState(if (active) Color.White else Color.White.copy(alpha = 0.82f), tween(220), label = "tint")
     Box(
         modifier = Modifier
-            .size(46.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .size(60.dp)
             .clip(CircleShape)
             .background(fill)
             .clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(28.dp))
     }
 }

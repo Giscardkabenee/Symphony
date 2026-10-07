@@ -101,4 +101,5 @@
     <string name="lyrics_searching">Recherche des paroles…</string>
     <string name="lyrics_error">La recherche des paroles a échoué</string>
     <string name="retry">Réessayer</string>
+    <string name="tap_for_lyrics">Toucher pour les paroles</string>
 </resources>

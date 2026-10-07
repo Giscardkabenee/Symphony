@@ -193,28 +193,41 @@ fun AlbumsScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit) {
 fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
     val artists by vm.artists.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
-    LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        item { ScreenTitle(stringResource(R.string.tab_artists)) }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(104.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = BarSpace),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Box(Modifier.offset(x = (-20).dp)) { ScreenTitle(stringResource(R.string.tab_artists)) }
+        }
         if (artists.isEmpty()) {
-            item { EmptyState(stringResource(R.string.empty_library)) }
+            item(span = { GridItemSpan(maxLineSpan) }) { EmptyState(stringResource(R.string.empty_library)) }
         }
         items(artists.size) { i ->
             val artist = artists[i]
-            Row(
-                modifier = Modifier.fillMaxWidth().clickable { onArtist(artist.name) }.padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { onArtist(artist.name) },
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(56.dp))
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        text = stringResource(R.string.albums_count, artist.albumCount) + " · " + stringResource(R.string.songs_count, artist.songs.size),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                ArtistAvatar(artist.name, settings.artistPhotos, Modifier.fillMaxWidth().aspectRatio(1f))
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = artist.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = stringResource(R.string.songs_count, artist.songs.size),
+                    maxLines = 1,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
