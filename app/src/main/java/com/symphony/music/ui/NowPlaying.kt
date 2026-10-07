@@ -17,6 +17,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -477,7 +478,19 @@ private fun Controls(
             Icon(Icons.Rounded.VolumeUp, contentDescription = volumeLabel, tint = Soft, modifier = Modifier.size(20.dp))
         }
 
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        // Actions grouped in one translucent capsule so they read as a single control.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+                .height(58.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.10f))
+                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape)
+                .padding(horizontal = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             ToggleIcon(Icons.Rounded.Shuffle, stringResource(R.string.shuffle), state.shuffle) { vm.toggleShuffle() }
             ToggleIcon(
                 icon = if (state.repeat == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
@@ -552,17 +565,28 @@ private fun ThinSlider(
     }
 }
 
-/** Round toggle: a light disc behind the icon shows the active state, not colour alone. */
+/** One slot of the action capsule: a white disc with a dark icon marks the active state. */
 @Composable
 private fun ToggleIcon(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
+    val fill by animateColorAsState(if (active) Color.White else Color.Transparent, tween(220), label = "fill")
+    val tint by animateColorAsState(if (active) Color(0xFF111114) else Color.White.copy(alpha = 0.88f), tween(220), label = "tint")
+    val scale by animateFloatAsState(
+        targetValue = if (active) 1f else 0.94f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium),
+        label = "scale",
+    )
     Box(
         modifier = Modifier
-            .size(52.dp)
+            .size(46.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(CircleShape)
-            .background(if (active) Color.White.copy(alpha = 0.22f) else Color.Transparent)
+            .background(fill)
             .clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = label, tint = if (active) Color.White else Soft)
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
     }
 }
