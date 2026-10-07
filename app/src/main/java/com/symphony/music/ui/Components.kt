@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -265,18 +266,20 @@ fun GlassBox(
     val scheme = MaterialTheme.colorScheme
     val haze = LocalHaze.current
     val backdrop = scheme.background
-    val glassTint = scheme.surfaceContainerHigh.copy(alpha = 0.26f)
+    // Smoked glass: a dark veil in the dark theme, a pale one in the light theme.
+    val dark = scheme.background.luminance() < 0.5f
+    val glassTint = if (dark) Color(0xFF0C0C10).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.55f)
     val glow by animateColorAsState(accent ?: Color.Transparent, tween(700), label = "glow")
-    val base = modifier.clip(shape)
+    val base = modifier.shadow(if (glass) 14.dp else 8.dp, shape).clip(shape)
     val surface = when {
         glass && haze != null -> base.hazeEffect(state = haze) {
             blurEnabled = true
-            blurRadius = 30.dp
+            blurRadius = 22.dp
             backgroundColor = backdrop
             tints = listOf(HazeTint(glassTint))
-            noiseFactor = 0.05f
+            noiseFactor = 0.02f
         }
-        glass -> base.background(scheme.surfaceContainerHigh.copy(alpha = 0.8f))
+        glass -> base.background(glassTint.copy(alpha = 0.82f))
         else -> base.background(scheme.surfaceContainerHigh)
     }
     val lit = if (glass) {
@@ -285,13 +288,13 @@ fun GlassBox(
             // Colour of the music, stronger at the two ends.
             drawRect(
                 Brush.horizontalGradient(
-                    0f to glow.copy(alpha = glow.alpha * 0.42f),
-                    0.5f to glow.copy(alpha = glow.alpha * 0.12f),
-                    1f to glow.copy(alpha = glow.alpha * 0.32f),
+                    0f to glow.copy(alpha = glow.alpha * 0.24f),
+                    0.5f to glow.copy(alpha = glow.alpha * 0.06f),
+                    1f to glow.copy(alpha = glow.alpha * 0.18f),
                 )
             )
             // Light falling on the top half.
-            drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.20f), 0.5f to Color.White.copy(alpha = 0.03f), 1f to Color.Transparent))
+            drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.08f), 0.5f to Color.Transparent))
             // Thickness of the glass along the bottom.
             drawRect(Brush.verticalGradient(0.7f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.18f)))
         }
@@ -300,16 +303,15 @@ fun GlassBox(
     }
     val edge: Brush = if (glass) {
         Brush.linearGradient(
-            0f to Color.White.copy(alpha = 0.75f),
-            0.3f to Color.White.copy(alpha = 0.14f),
-            0.7f to Color.White.copy(alpha = 0.10f),
-            1f to Color.White.copy(alpha = 0.5f),
+            0f to Color.White.copy(alpha = 0.3f),
+            0.35f to Color.White.copy(alpha = 0.12f),
+            1f to Color.White.copy(alpha = 0.16f),
         )
     } else {
         SolidColor(scheme.outlineVariant)
     }
     Box(
-        modifier = surface.then(lit).border(1.2.dp, edge, shape),
+        modifier = surface.then(lit).border(1.dp, edge, shape),
         content = content,
     )
 }
