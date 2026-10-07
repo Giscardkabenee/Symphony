@@ -2,6 +2,19 @@ package com.symphony.music.ui
 
 import android.content.Context
 import android.media.AudioManager
+import android.os.Build
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -36,6 +49,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -76,52 +93,72 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
     }
 
     val context = LocalContext.current
-    val tint by produceState(DefaultTint, song.albumId) {
+    val rawTint by produceState(DefaultTint, song.albumId) {
         val found = dominantColor(context, song.artUri)
         value = if (found != null) lerp(found, Color.Black, 0.45f) else DefaultTint
     }
+    val tint by animateColorAsState(rawTint, tween(700), label = "tint")
+    // The cover breathes: full size while playing, slightly smaller when paused.
+    val coverScale by animateFloatAsState(
+        targetValue = if (state.isPlaying) 1f else 0.93f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow),
+        label = "cover",
+    )
     var mode by rememberSaveable { mutableStateOf(MODE_COVER) }
     val activeLine = remember(lyrics, state.position) { currentLine(lyrics, state.position) }
 
     CompositionLocalProvider(LocalContentColor provides Color.White) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(tint, lerp(tint, Color.Black, 0.5f))))
                 .pointerInput(Unit) { detectTapGestures { } },
         ) {
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                when (mode) {
-                    MODE_QUEUE -> QueueList(state, vm, onMore)
-                    MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics) { vm.seekTo(it) }
-                    else -> Cover(song, settings.fullCover, tint, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
+            // Blurred copy of the cover behind the whole screen (Android 12 and later).
+            if (settings.fullCover && Build.VERSION.SDK_INT >= 31) {
+                Crossfade(targetState = song, animationSpec = tween(700), label = "backdrop") { s ->
+                    Artwork(s.albumId, s.album, Modifier.fillMaxSize().blur(56.dp), RectangleShape)
                 }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .statusBarsPadding()
-                        .size(width = 72.dp, height = 36.dp)
-                        .clickable(onClickLabel = stringResource(R.string.close), onClick = onClose),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(Modifier.size(width = 40.dp, height = 5.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
-                }
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)))
             }
-            Controls(
-                song = song,
-                state = state,
-                vm = vm,
-                favorite = song.id in settings.favorites,
-                lyricLine = if (mode == MODE_COVER && settings.syncedLyrics && lyrics?.synced == true && activeLine >= 0) {
-                    lyrics?.lines?.getOrNull(activeLine)?.text
-                } else null,
-                hasLyrics = lyrics != null,
-                mode = mode,
-                showVolume = !settings.hideVolume,
-                onMode = { mode = if (mode == it) MODE_COVER else it },
-                onMore = { onMore(song) },
-                onArtist = { onArtist(song.artist) },
-            )
+            Column(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxWidth().weight(1f)) {
+                    Crossfade(targetState = mode, animationSpec = tween(320), modifier = Modifier.fillMaxSize(), label = "mode") { shown ->
+                        when (shown) {
+                            MODE_QUEUE -> QueueList(state, vm, onMore)
+                            MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics) { vm.seekTo(it) }
+                            else -> Crossfade(targetState = song, animationSpec = tween(520), modifier = Modifier.fillMaxSize(), label = "song") { s ->
+                                Cover(s, settings.fullCover, coverScale, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
+                            }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .statusBarsPadding()
+                            .size(width = 72.dp, height = 36.dp)
+                            .clickable(onClickLabel = stringResource(R.string.close), onClick = onClose),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(Modifier.size(width = 40.dp, height = 5.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
+                    }
+                }
+                Controls(
+                    song = song,
+                    state = state,
+                    vm = vm,
+                    favorite = song.id in settings.favorites,
+                    lyricLine = if (mode == MODE_COVER && settings.syncedLyrics && lyrics?.synced == true && activeLine >= 0) {
+                        lyrics?.lines?.getOrNull(activeLine)?.text
+                    } else null,
+                    hasLyrics = lyrics != null,
+                    mode = mode,
+                    showVolume = !settings.hideVolume,
+                    onMode = { mode = if (mode == it) MODE_COVER else it },
+                    onMore = { onMore(song) },
+                    onArtist = { onArtist(song.artist) },
+                )
+            }
         }
     }
 }
@@ -136,7 +173,7 @@ private fun currentLine(lyrics: LyricsData?, position: Long): Int {
 }
 
 @Composable
-private fun Cover(song: Song, fullCover: Boolean, tint: Color, doubleTap: Boolean, onSeekBy: (Long) -> Unit, onClose: () -> Unit) {
+private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boolean, onSeekBy: (Long) -> Unit, onClose: () -> Unit) {
     // Double tap on the left or right half of the cover skips 5 seconds back or forward.
     val taps = Modifier.pointerInput(doubleTap) {
         detectTapGestures(onDoubleTap = { offset ->
@@ -151,19 +188,44 @@ private fun Cover(song: Song, fullCover: Boolean, tint: Color, doubleTap: Boolea
         ) { _, amount -> total += amount }
     }
     if (fullCover) {
+        // The cover fills the area and melts into the blurred backdrop at the top and bottom.
         Box(Modifier.fillMaxSize().then(drag).then(taps)) {
-            Artwork(song.albumId, song.album, Modifier.fillMaxSize(), RectangleShape)
-            Box(
+            Artwork(
+                song.albumId,
+                song.album,
                 Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, tint)))
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                0.18f to Color.Black,
+                                0.72f to Color.Black,
+                                1f to Color.Transparent,
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                    },
+                RectangleShape,
             )
         }
     } else {
         Box(Modifier.fillMaxSize().then(drag).then(taps).statusBarsPadding().padding(32.dp), contentAlignment = Alignment.Center) {
-            Artwork(song.albumId, song.album, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(16.dp))
+            Artwork(
+                song.albumId,
+                song.album,
+                Modifier.fillMaxWidth().aspectRatio(1f).graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
+                RoundedCornerShape(16.dp),
+            )
         }
     }
 }
@@ -341,11 +403,19 @@ private fun Controls(
                 Icon(Icons.Rounded.FastRewind, contentDescription = stringResource(R.string.previous), modifier = Modifier.size(44.dp))
             }
             IconButton(onClick = { vm.toggle() }, modifier = Modifier.size(76.dp)) {
-                Icon(
-                    imageVector = if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = stringResource(if (state.isPlaying) R.string.pause else R.string.play),
-                    modifier = Modifier.size(60.dp),
-                )
+                AnimatedContent(
+                    targetState = state.isPlaying,
+                    transitionSpec = {
+                        (scaleIn(initialScale = 0.6f) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut())
+                    },
+                    label = "play",
+                ) { playing ->
+                    Icon(
+                        imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = stringResource(if (playing) R.string.pause else R.string.play),
+                        modifier = Modifier.size(60.dp),
+                    )
+                }
             }
             IconButton(onClick = { vm.next() }, modifier = Modifier.size(64.dp)) {
                 Icon(Icons.Rounded.FastForward, contentDescription = stringResource(R.string.next), modifier = Modifier.size(44.dp))

@@ -2,6 +2,12 @@ package com.symphony.music.ui
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -218,8 +225,12 @@ fun FloatingBar(
         val song = state.current
         val pill: Shape = if (classic) RoundedCornerShape(18.dp) else CircleShape
         val useGlass = glass && !classic
-        if (song != null) {
-            GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(60.dp)) {
+        AnimatedVisibility(
+            visible = song != null,
+            enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 },
+            exit = fadeOut(tween(200)),
+        ) {
+            if (song != null) GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(60.dp)) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
@@ -264,14 +275,17 @@ fun FloatingBar(
                     tabs.forEach { tab ->
                         val selected = route == tab.route
                         val tint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        val tabFill by animateColorAsState(
+                            targetValue = if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f) else Color.Transparent,
+                            animationSpec = tween(250),
+                            label = "tab",
+                        )
                         Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .clip(pill)
-                                .background(
-                                    if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f) else Color.Transparent
-                                )
+                                .background(tabFill)
                                 .clickable { onTab(tab.route) },
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
