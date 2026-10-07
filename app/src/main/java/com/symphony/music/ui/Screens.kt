@@ -48,8 +48,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -153,7 +155,7 @@ fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onStack: (String) ->
             item { EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint)) }
         } else {
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     item { StackCard(stringResource(R.string.recently_played), recent) { onStack(RECENT_KEY) } }
                     item { StackCard(stringResource(R.string.recently_added), added) { onStack(ADDED_KEY) } }
                     item { StackCard(stringResource(R.string.most_played), most) { onStack(MOST_KEY) } }
@@ -172,43 +174,58 @@ fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onStack: (String) ->
 private fun mostPlayedIds(counts: Map<Long, Int>): List<Long> =
     counts.entries.sortedByDescending { it.value }.take(50).map { it.key }
 
-/** A collection shown as a small pile: the newest cover in front, two more peeking out behind it. */
+/** A collection drawn as a tabbed folder tinted by its newest cover, with two albums sticking out. */
 @Composable
 private fun StackCard(title: String, songs: List<Song>, onClick: () -> Unit) {
     val covers = remember(songs) { songs.distinctBy { it.albumId }.take(3) }
-    Column(
-        modifier = Modifier
-            .width(156.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(6.dp),
-    ) {
-        Box(Modifier.fillMaxWidth().height(166.dp)) {
-            StackLayer(covers.getOrNull(2), Modifier.align(Alignment.TopCenter).fillMaxWidth(0.72f).height(70.dp), 0.5f)
-            StackLayer(covers.getOrNull(1), Modifier.align(Alignment.TopCenter).padding(top = 11.dp).fillMaxWidth(0.86f).height(80.dp), 0.78f)
-            StackLayer(
-                covers.getOrNull(0),
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(144.dp).shadow(12.dp, RoundedCornerShape(18.dp)),
-                1f,
-                RoundedCornerShape(18.dp),
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            text = stringResource(R.string.songs_count, songs.size),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    val context = LocalContext.current
+    val fallback = colorFor(title)
+    val first = covers.firstOrNull()
+    val tint by produceState(fallback, first?.albumId) {
+        val found = first?.let { dominantColor(context, it.artUri) }
+        value = lerp(found ?: fallback, Color.Black, 0.25f)
     }
-}
-
-@Composable
-private fun StackLayer(song: Song?, modifier: Modifier, opacity: Float, shape: RoundedCornerShape = RoundedCornerShape(14.dp)) {
-    if (song != null) {
-        Artwork(song.albumId, song.album, modifier.graphicsLayer { alpha = opacity }, shape)
-    } else {
-        Box(modifier.graphicsLayer { alpha = opacity }.clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHighest))
+    val back = lerp(tint, Color.Black, 0.3f)
+    val bodyShape = RoundedCornerShape(topStart = 0.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 18.dp)
+    val frontShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomEnd = 18.dp, bottomStart = 18.dp)
+    Box(
+        modifier = Modifier
+            .size(width = 172.dp, height = 172.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClickLabel = title, onClick = onClick),
+    ) {
+        // Back of the folder: the tab, then the body.
+        Box(Modifier.offset(y = 18.dp).size(width = 76.dp, height = 30.dp).clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)).background(back))
+        Box(Modifier.offset(y = 38.dp).fillMaxWidth().height(134.dp).clip(bodyShape).background(back))
+        // Two albums peeking out of the folder.
+        covers.getOrNull(2)?.let {
+            Artwork(it.albumId, it.album, Modifier.offset(x = 22.dp, y = 10.dp).size(width = 76.dp, height = 92.dp).rotate(-7f), RoundedCornerShape(10.dp))
+        }
+        covers.getOrNull(1)?.let {
+            Artwork(it.albumId, it.album, Modifier.offset(x = 76.dp, y = 6.dp).size(width = 76.dp, height = 92.dp).rotate(6f), RoundedCornerShape(10.dp))
+        }
+        // Front flap carrying the newest cover as a faint texture, the name and the count.
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(98.dp)
+                .shadow(10.dp, frontShape)
+                .clip(frontShape)
+                .background(tint),
+        ) {
+            if (first != null) {
+                Artwork(first.albumId, first.album, Modifier.matchParentSize().graphicsLayer { alpha = 0.22f }, frontShape)
+            }
+            Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = stringResource(R.string.songs_count, songs.size),
+                    color = Color.White.copy(alpha = 0.82f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 }
 
