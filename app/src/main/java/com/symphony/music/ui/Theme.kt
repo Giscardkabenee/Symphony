@@ -5,7 +5,42 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Typography
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.symphony.music.R
+
+/** Inter, an open-licensed typeface (SIL Open Font License). */
+val Inter = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold),
+    Font(R.font.inter_extrabold, FontWeight.ExtraBold),
+)
+
+private val base = Typography()
+
+private val AppTypography = Typography(
+    displayLarge = base.displayLarge.copy(fontFamily = Inter),
+    displayMedium = base.displayMedium.copy(fontFamily = Inter),
+    displaySmall = base.displaySmall.copy(fontFamily = Inter),
+    headlineLarge = base.headlineLarge.copy(fontFamily = Inter, letterSpacing = (-0.5).sp),
+    headlineMedium = base.headlineMedium.copy(fontFamily = Inter, letterSpacing = (-0.3).sp),
+    headlineSmall = base.headlineSmall.copy(fontFamily = Inter, letterSpacing = (-0.2).sp),
+    titleLarge = base.titleLarge.copy(fontFamily = Inter, letterSpacing = (-0.2).sp),
+    titleMedium = base.titleMedium.copy(fontFamily = Inter),
+    titleSmall = base.titleSmall.copy(fontFamily = Inter),
+    bodyLarge = base.bodyLarge.copy(fontFamily = Inter, letterSpacing = 0.sp),
+    bodyMedium = base.bodyMedium.copy(fontFamily = Inter, letterSpacing = 0.sp),
+    bodySmall = base.bodySmall.copy(fontFamily = Inter, letterSpacing = 0.sp),
+    labelLarge = base.labelLarge.copy(fontFamily = Inter),
+    labelMedium = base.labelMedium.copy(fontFamily = Inter),
+    labelSmall = base.labelSmall.copy(fontFamily = Inter),
+)
 
 private val Ink = Color(0xFF0A0A0C)
 private val Card = Color(0xFF1C1C1F)
@@ -72,6 +107,7 @@ fun isDark(themeMode: Int): Boolean = when (themeMode) {
 fun SymphonyTheme(themeMode: Int, content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isDark(themeMode)) DarkColors else LightColors,
+        typography = AppTypography,
         content = content,
     )
 }
