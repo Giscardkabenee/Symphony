@@ -13,33 +13,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.symphony.music.R
 
-/** Inter, an open-licensed typeface (SIL Open Font License). */
-val Inter = FontFamily(
-    Font(R.font.inter_regular, FontWeight.Normal),
-    Font(R.font.inter_medium, FontWeight.Medium),
-    Font(R.font.inter_semibold, FontWeight.SemiBold),
-    Font(R.font.inter_bold, FontWeight.Bold),
-    Font(R.font.inter_extrabold, FontWeight.ExtraBold),
+/** Outfit, an open-licensed typeface (SIL Open Font License). */
+val AppFont = FontFamily(
+    Font(R.font.outfit_regular, FontWeight.Normal),
+    Font(R.font.outfit_medium, FontWeight.Medium),
+    Font(R.font.outfit_semibold, FontWeight.SemiBold),
+    Font(R.font.outfit_bold, FontWeight.Bold),
+    Font(R.font.outfit_extrabold, FontWeight.ExtraBold),
 )
 
 private val base = Typography()
 
 private val AppTypography = Typography(
-    displayLarge = base.displayLarge.copy(fontFamily = Inter),
-    displayMedium = base.displayMedium.copy(fontFamily = Inter),
-    displaySmall = base.displaySmall.copy(fontFamily = Inter),
-    headlineLarge = base.headlineLarge.copy(fontFamily = Inter, letterSpacing = (-0.5).sp),
-    headlineMedium = base.headlineMedium.copy(fontFamily = Inter, letterSpacing = (-0.3).sp),
-    headlineSmall = base.headlineSmall.copy(fontFamily = Inter, letterSpacing = (-0.2).sp),
-    titleLarge = base.titleLarge.copy(fontFamily = Inter, letterSpacing = (-0.2).sp),
-    titleMedium = base.titleMedium.copy(fontFamily = Inter),
-    titleSmall = base.titleSmall.copy(fontFamily = Inter),
-    bodyLarge = base.bodyLarge.copy(fontFamily = Inter, letterSpacing = 0.sp),
-    bodyMedium = base.bodyMedium.copy(fontFamily = Inter, letterSpacing = 0.sp),
-    bodySmall = base.bodySmall.copy(fontFamily = Inter, letterSpacing = 0.sp),
-    labelLarge = base.labelLarge.copy(fontFamily = Inter),
-    labelMedium = base.labelMedium.copy(fontFamily = Inter),
-    labelSmall = base.labelSmall.copy(fontFamily = Inter),
+    displayLarge = base.displayLarge.copy(fontFamily = AppFont),
+    displayMedium = base.displayMedium.copy(fontFamily = AppFont),
+    displaySmall = base.displaySmall.copy(fontFamily = AppFont),
+    headlineLarge = base.headlineLarge.copy(fontFamily = AppFont, letterSpacing = (-0.5).sp),
+    headlineMedium = base.headlineMedium.copy(fontFamily = AppFont, letterSpacing = (-0.3).sp),
+    headlineSmall = base.headlineSmall.copy(fontFamily = AppFont, letterSpacing = (-0.2).sp),
+    titleLarge = base.titleLarge.copy(fontFamily = AppFont, letterSpacing = (-0.2).sp),
+    titleMedium = base.titleMedium.copy(fontFamily = AppFont),
+    titleSmall = base.titleSmall.copy(fontFamily = AppFont),
+    bodyLarge = base.bodyLarge.copy(fontFamily = AppFont, letterSpacing = 0.sp),
+    bodyMedium = base.bodyMedium.copy(fontFamily = AppFont, letterSpacing = 0.sp),
+    bodySmall = base.bodySmall.copy(fontFamily = AppFont, letterSpacing = 0.sp),
+    labelLarge = base.labelLarge.copy(fontFamily = AppFont),
+    labelMedium = base.labelMedium.copy(fontFamily = AppFont),
+    labelSmall = base.labelSmall.copy(fontFamily = AppFont),
 )
 
 private val Ink = Color(0xFF0A0A0C)
