@@ -217,15 +217,15 @@ private fun StackLayer(song: Song?, modifier: Modifier, opacity: Float, shape: R
 @Composable
 fun AlbumsScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit) {
     val albums by vm.albums.collectAsStateWithLifecycle()
+    // The title stays put; only the grid scrolls.
+    Column(Modifier.fillMaxSize()) {
+    ScreenTitle(stringResource(R.string.tab_albums), stringResource(R.string.albums_count, albums.size))
     LazyVerticalGrid(
         columns = GridCells.Adaptive(150.dp),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = BarSpace),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = BarSpace),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.offset(x = (-20).dp)) { ScreenTitle(stringResource(R.string.tab_albums), stringResource(R.string.albums_count, albums.size)) }
-        }
         if (albums.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { EmptyState(stringResource(R.string.empty_library)) }
         }
@@ -234,21 +234,22 @@ fun AlbumsScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit) {
             AlbumCard(album) { onAlbum(album.id) }
         }
     }
+    }
 }
 
 @Composable
 fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
     val artists by vm.artists.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    // The title stays put; only the grid scrolls.
+    Column(Modifier.fillMaxSize()) {
+    ScreenTitle(stringResource(R.string.tab_artists), stringResource(R.string.artists_count, artists.size))
     LazyVerticalGrid(
         columns = GridCells.Adaptive(104.dp),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = BarSpace),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = BarSpace),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.offset(x = (-20).dp)) { ScreenTitle(stringResource(R.string.tab_artists), stringResource(R.string.artists_count, artists.size)) }
-        }
         if (artists.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { EmptyState(stringResource(R.string.empty_library)) }
         }
@@ -277,6 +278,7 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
                 )
             }
         }
+    }
     }
 }
 
