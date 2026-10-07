@@ -77,13 +77,12 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.symphony.music.data.Song
 import com.symphony.music.ui.AlbumScreen
-import com.symphony.music.ui.AlbumsScreen
 import com.symphony.music.ui.ArtistScreen
-import com.symphony.music.ui.ArtistsScreen
 import com.symphony.music.ui.DiscoverScreen
 import com.symphony.music.ui.FloatingBar
 import com.symphony.music.ui.HomeScreen
-import com.symphony.music.ui.LibraryScreen
+import com.symphony.music.ui.MusicScreen
+import com.symphony.music.ui.OnlineScreen
 import com.symphony.music.ui.LocalHaze
 import com.symphony.music.ui.NewPlaylistDialog
 import com.symphony.music.ui.NowPlaying
