@@ -107,10 +107,17 @@ fun HomeScreen(
                 }
             }
         }
-        // What is in the player, or else the last song listened to.
+        // What is in the player; else the podcast episode left unfinished; else the last song listened to.
         val current = state.current
-        val resume = current ?: recent.firstOrNull()
+        val episode = if (current == null) settings.lastEpisode else null
+        val resume = current ?: episode?.let { it.episode.toSong(it.podcast) } ?: recent.firstOrNull()
         if (resume != null) {
+            val position = episode?.let { settings.episodePositions[it.episode.id] } ?: 0L
+            val detail = when {
+                episode != null && position > 0 -> stringResource(R.string.podcast) + " · " + stringResource(R.string.podcast_resume, formatTime(position))
+                episode != null -> stringResource(R.string.podcast) + " · " + resume.artist
+                else -> resume.artist
+            }
             item {
                 Row(
                     modifier = Modifier
@@ -118,11 +125,21 @@ fun HomeScreen(
                         .padding(horizontal = 20.dp, vertical = 8.dp)
                         .clip(RoundedCornerShape(22.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .clickable { if (current != null) vm.toggle() else vm.play(recent, 0) }
+                        .clickable {
+                            when {
+                                current != null -> vm.toggle()
+                                episode != null -> vm.playEpisode(episode.podcast, episode.episode)
+                                else -> vm.play(recent, 0)
+                            }
+                        }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Artwork(resume.albumId, resume.album, Modifier.size(60.dp), RoundedCornerShape(14.dp))
+                    if (episode != null) {
+                        WebArt(episode.episode.art.ifBlank { episode.podcast.art }, episode.podcast.title, Modifier.size(60.dp), RoundedCornerShape(14.dp))
+                    } else {
+                        Artwork(resume.albumId, resume.album, Modifier.size(60.dp), RoundedCornerShape(14.dp))
+                    }
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -133,7 +150,7 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(resume.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text(resume.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(detail, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.width(10.dp))
                     Box(Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface), contentAlignment = Alignment.Center) {

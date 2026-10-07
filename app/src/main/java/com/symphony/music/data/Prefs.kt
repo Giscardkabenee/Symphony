@@ -63,6 +63,8 @@ data class AppSettings(
     val episodePositions: Map<Long, Long> = emptyMap(),
     /** Episodes saved on the phone, newest first. */
     val downloads: List<DownloadedEpisode> = emptyList(),
+    /** The podcast episode last listened to, offered again on the home screen. */
+    val lastEpisode: DownloadedEpisode? = null,
 )
 
 class Prefs(context: Context) {
@@ -95,6 +97,7 @@ class Prefs(context: Context) {
             podcasts = decodePodcasts(p[PODCASTS]),
             episodePositions = decodePositions(p[EPISODE_POSITIONS]),
             downloads = decodeDownloads(p[DOWNLOADS]),
+            lastEpisode = decodeDownloads(p[LAST_EPISODE]).firstOrNull(),
         )
     }
 
@@ -145,6 +148,10 @@ class Prefs(context: Context) {
             val list = listOf(item) + decodeDownloads(p[DOWNLOADS]).filter { it.episode.id != item.episode.id }
             p[DOWNLOADS] = encodeDownloads(list)
         }
+    }
+
+    suspend fun setLastEpisode(item: DownloadedEpisode?) {
+        store.edit { p -> if (item == null) p.remove(LAST_EPISODE) else p[LAST_EPISODE] = encodeDownloads(listOf(item)) }
     }
 
     suspend fun removeDownload(id: Long) {
@@ -208,6 +215,7 @@ class Prefs(context: Context) {
         val STATIONS = stringPreferencesKey("radio_stations")
         val PODCASTS = stringPreferencesKey("podcasts")
         val DOWNLOADS = stringPreferencesKey("podcast_downloads")
+        val LAST_EPISODE = stringPreferencesKey("last_episode")
         val EPISODE_POSITIONS = stringPreferencesKey("episode_positions")
 
         fun decodeIds(raw: String?): List<Long> =

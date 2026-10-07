@@ -96,6 +96,8 @@ import com.symphony.music.PlayerState
 import com.symphony.music.R
 import com.symphony.music.data.ArtOverrides
 import com.symphony.music.data.ArtistImages
+import com.symphony.music.data.PODCAST_MARK
+import com.symphony.music.data.PREVIEW_MARK
 import com.symphony.music.data.Song
 import com.symphony.music.data.artworkUri
 import kotlinx.coroutines.Dispatchers
@@ -108,6 +110,12 @@ private val artColors = listOf(
 
 /** Stable placeholder colour for an album or artist without artwork. */
 fun colorFor(key: String): Color = artColors[(key.hashCode() and 0x7fffffff) % artColors.size]
+
+/** A live radio stream, as opposed to a song, a podcast episode or a catalogue preview. */
+fun Song.isStation(): Boolean = id < 0 && path != PODCAST_MARK && path != PREVIEW_MARK
+
+/** Only songs on the phone and radio stations have options or a favourite state. */
+fun Song.hasOptions(): Boolean = id >= 0 || isStation()
 
 fun formatTime(ms: Long): String {
     val seconds = (ms / 1000).coerceAtLeast(0)

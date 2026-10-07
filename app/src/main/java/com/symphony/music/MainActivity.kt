@@ -267,13 +267,15 @@ private fun SongMenu(
 ) {
     var picking by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
-    val favorite = song.id in settings.favorites
+    val local = song.id >= 0
+    val favorite = if (local) song.id in settings.favorites else settings.stations.any { it.id == song.id }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
             Text(song.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp))
             Text(song.artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp))
-            MenuItem(Icons.Rounded.SkipNext, stringResource(R.string.play_next)) {
+            // A radio station can only be kept as a favourite; the rest applies to songs on the phone.
+            if (local) MenuItem(Icons.Rounded.SkipNext, stringResource(R.string.play_next)) {
                 vm.playNext(song)
                 onDismiss()
             }
@@ -284,9 +286,11 @@ private fun SongMenu(
                 vm.toggleFavorite(song.id)
                 onDismiss()
             }
-            MenuItem(Icons.Rounded.PlaylistAdd, stringResource(R.string.add_to_playlist)) { picking = true }
-            MenuItem(Icons.Rounded.Album, stringResource(R.string.go_to_album), onAlbum)
-            MenuItem(Icons.Rounded.Person, stringResource(R.string.go_to_artist), onArtist)
+            if (local) {
+                MenuItem(Icons.Rounded.PlaylistAdd, stringResource(R.string.add_to_playlist)) { picking = true }
+                MenuItem(Icons.Rounded.Album, stringResource(R.string.go_to_album), onAlbum)
+                MenuItem(Icons.Rounded.Person, stringResource(R.string.go_to_artist), onArtist)
+            }
         }
     }
 

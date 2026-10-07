@@ -344,7 +344,7 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) ->
                         Text(now.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(now.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Soft)
                     }
-                    Box(
+                    if (now.hasOptions()) Box(
                         modifier = Modifier.size(44.dp).liquidDrop(CircleShape).clickable { onMore(now) },
                         contentAlignment = Alignment.Center,
                     ) {
@@ -477,11 +477,11 @@ private fun Controls(
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,
                     color = Soft,
-                    modifier = Modifier.clickable(onClick = onArtist),
+                    modifier = if (song.id >= 0) Modifier.clickable(onClick = onArtist) else Modifier,
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Box(
+            if (song.hasOptions()) Box(
                 modifier = Modifier.size(44.dp).liquidDrop(CircleShape).clickable(onClick = onMore),
                 contentAlignment = Alignment.Center,
             ) {
@@ -592,7 +592,7 @@ private fun Controls(
                 label = stringResource(R.string.repeat),
                 active = state.repeat != Player.REPEAT_MODE_OFF,
             ) { vm.cycleRepeat() }
-            ToggleIcon(
+            if (song.hasOptions()) ToggleIcon(
                 icon = if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                 label = stringResource(R.string.favorite),
                 active = favorite,

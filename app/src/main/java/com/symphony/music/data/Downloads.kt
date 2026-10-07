@@ -1,6 +1,9 @@
 package com.symphony.music.data
 
 import android.content.Context
+import android.content.Intent
+import androidx.core.content.ContextCompat
+import com.symphony.music.playback.DownloadService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +35,12 @@ object Downloads {
         val app = context.applicationContext
         if (progress.value.containsKey(episode.id)) return
         progress.update { it + (episode.id to 0) }
+        // A foreground service keeps the transfer going if the app is closed meanwhile.
+        try {
+            ContextCompat.startForegroundService(app, Intent(app, DownloadService::class.java))
+        } catch (e: Exception) {
+            // Not allowed right now: the download still runs while the app stays open.
+        }
         scope.launch {
             val target = file(app, episode.id)
             val part = File(target.path + ".part")

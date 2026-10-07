@@ -157,4 +157,5 @@
     <string name="search_all_text">Your music, radios, podcasts and the catalogue, in one field.</string>
     <string name="library_summary">%1$d songs · %2$d albums · %3$d artists</string>
     <string name="album_by">Album · %1$s</string>
+    <string name="download_running">Downloading episodes</string>
 </resources>

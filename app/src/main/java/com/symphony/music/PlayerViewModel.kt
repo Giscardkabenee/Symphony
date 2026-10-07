@@ -22,6 +22,7 @@ import com.symphony.music.data.Prefs
 import com.symphony.music.data.ArtOverrides
 import com.symphony.music.data.CatalogTrack
 import com.symphony.music.data.Downloads
+import com.symphony.music.data.DownloadedEpisode
 import com.symphony.music.data.Episode
 import com.symphony.music.data.Podcast
 import com.symphony.music.data.Song
@@ -192,6 +193,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
         lyricsJob = viewModelScope.launch {
             prefs.addRecent(song.id)
+            // A song from the phone is now the latest thing listened to.
+            prefs.setLastEpisode(null)
             _lyricsStatus.value = 1
             val local = loadLyrics(getApplication(), song)
             if (local != null) {
@@ -347,6 +350,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val song = episode.toSong(podcast)
         live[song.id] = song
         episodeIds += song.id
+        viewModelScope.launch { prefs.setLastEpisode(DownloadedEpisode(podcast, episode)) }
         if (episode.art.isNotBlank()) ArtOverrides.urls[song.id] = episode.art
         // A downloaded episode plays from the phone, without using the connection.
         val local = Downloads.file(getApplication(), episode.id)
