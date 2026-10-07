@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Radio
@@ -302,7 +303,7 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
 // ---------------------------------------------------------------- Library
 
 @Composable
-fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (Song) -> Unit, onRadio: () -> Unit) {
+fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (Song) -> Unit, onPodcasts: () -> Unit, onRadio: () -> Unit) {
     val songs by vm.songs.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -317,31 +318,8 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
                 }
             }
         }
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .clickable(onClick = onRadio)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Rounded.Radio, contentDescription = null, tint = MaterialTheme.colorScheme.surface)
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.radios), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.radio_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        item { LibraryEntry(Icons.Rounded.Radio, stringResource(R.string.radios), stringResource(R.string.radio_desc), onRadio) }
+        item { LibraryEntry(Icons.Rounded.Podcasts, stringResource(R.string.podcasts), stringResource(R.string.podcast_desc), onPodcasts) }
         item { SectionHeader(stringResource(R.string.playlists)) }
         item {
             PlaylistRow(
@@ -369,6 +347,34 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
             vm.createPlaylist(name)
             creating = false
         }
+    }
+}
+
+/** Large entry at the top of the library, leading to an online section. */
+@Composable
+private fun LibraryEntry(icon: ImageVector, title: String, description: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.surface)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

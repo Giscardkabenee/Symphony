@@ -117,4 +117,15 @@
     <string name="radio_empty">Aucune station trouvée</string>
     <string name="radio_no_favorites">Aucune station favorite pour le moment</string>
     <string name="live">En direct</string>
+    <string name="podcasts">Podcasts</string>
+    <string name="podcast">Podcast</string>
+    <string name="podcast_desc">Émissions à suivre et à écouter en ligne</string>
+    <string name="podcast_search">Nom d\'une émission</string>
+    <string name="podcast_following">Mes abonnements</string>
+    <string name="podcast_none_followed">Cherchez une émission, puis suivez-la pour la retrouver ici</string>
+    <string name="podcast_empty">Rien trouvé</string>
+    <string name="podcast_error">Chargement impossible. Vérifiez la connexion</string>
+    <string name="podcast_follow">Suivre</string>
+    <string name="podcast_unfollow">Ne plus suivre</string>
+    <string name="podcast_resume">reprise à %1$s</string>
 </resources>

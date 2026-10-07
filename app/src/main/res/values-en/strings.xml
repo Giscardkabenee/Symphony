@@ -116,4 +116,15 @@
     <string name="radio_empty">No station found</string>
     <string name="radio_no_favorites">No favourite station yet</string>
     <string name="live">Live</string>
+    <string name="podcasts">Podcasts</string>
+    <string name="podcast">Podcast</string>
+    <string name="podcast_desc">Shows to follow and stream</string>
+    <string name="podcast_search">Show name</string>
+    <string name="podcast_following">Following</string>
+    <string name="podcast_none_followed">Search for a show, then follow it to find it here</string>
+    <string name="podcast_empty">Nothing found</string>
+    <string name="podcast_error">Could not load. Check your connection</string>
+    <string name="podcast_follow">Follow</string>
+    <string name="podcast_unfollow">Unfollow</string>
+    <string name="podcast_resume">resume at %1$s</string>
 </resources>

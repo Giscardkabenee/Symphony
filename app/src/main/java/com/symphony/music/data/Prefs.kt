@@ -57,6 +57,10 @@ data class AppSettings(
     val playlists: Map<String, List<Long>> = emptyMap(),
     /** Favourite radio stations. */
     val stations: List<Station> = emptyList(),
+    /** Podcasts the user follows. */
+    val podcasts: List<Podcast> = emptyList(),
+    /** Where each started episode was left, in milliseconds. */
+    val episodePositions: Map<Long, Long> = emptyMap(),
 )
 
 class Prefs(context: Context) {
@@ -86,6 +90,8 @@ class Prefs(context: Context) {
             playCounts = decodeCounts(p[PLAY_COUNTS]),
             playlists = decodePlaylists(p[PLAYLISTS]),
             stations = decodeStations(p[STATIONS]),
+            podcasts = decodePodcasts(p[PODCASTS]),
+            episodePositions = decodePositions(p[EPISODE_POSITIONS]),
         )
     }
 
@@ -116,6 +122,29 @@ class Prefs(context: Context) {
                 )
             }
             p[STATIONS] = array.toString()
+        }
+    }
+
+    suspend fun togglePodcast(podcast: Podcast) {
+        store.edit { p ->
+            val list = decodePodcasts(p[PODCASTS])
+            val next = if (list.any { it.id == podcast.id }) list.filter { it.id != podcast.id } else listOf(podcast) + list
+            val array = JSONArray()
+            for (item in next) {
+                array.put(JSONObject().put("id", item.id).put("title", item.title).put("author", item.author).put("feed", item.feedUrl).put("art", item.art))
+            }
+            p[PODCASTS] = array.toString()
+        }
+    }
+
+    suspend fun saveEpisodePosition(id: Long, positionMs: Long) {
+        store.edit { p ->
+            val map = LinkedHashMap(decodePositions(p[EPISODE_POSITIONS]))
+            map.remove(id)
+            map[id] = positionMs
+            // Keep the hundred most recent episodes.
+            val recent = map.entries.toList().takeLast(100)
+            p[EPISODE_POSITIONS] = recent.joinToString(",") { "${it.key}:${it.value}" }
         }
     }
 
@@ -163,6 +192,8 @@ class Prefs(context: Context) {
         val PLAY_COUNTS = stringPreferencesKey("play_counts")
         val PLAYLISTS = stringPreferencesKey("playlists")
         val STATIONS = stringPreferencesKey("radio_stations")
+        val PODCASTS = stringPreferencesKey("podcasts")
+        val EPISODE_POSITIONS = stringPreferencesKey("episode_positions")
 
         fun decodeIds(raw: String?): List<Long> =
             raw?.split(',')?.mapNotNull { it.trim().toLongOrNull() } ?: emptyList()
@@ -178,6 +209,30 @@ class Prefs(context: Context) {
             } catch (e: Exception) {
                 emptyList()
             }
+        }
+
+        fun decodePodcasts(raw: String?): List<Podcast> {
+            if (raw.isNullOrBlank()) return emptyList()
+            return try {
+                val array = JSONArray(raw)
+                (0 until array.length()).map { i ->
+                    val o = array.getJSONObject(i)
+                    Podcast(o.getLong("id"), o.optString("title"), o.optString("author"), o.optString("feed"), o.optString("art"))
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        fun decodePositions(raw: String?): Map<Long, Long> {
+            if (raw.isNullOrBlank()) return emptyMap()
+            val out = LinkedHashMap<Long, Long>()
+            for (part in raw.split(',')) {
+                val id = part.substringBefore(':').toLongOrNull() ?: continue
+                val position = part.substringAfter(':', "").toLongOrNull() ?: continue
+                out[id] = position
+            }
+            return out
         }
 
         fun decodeCounts(raw: String?): Map<Long, Int> {

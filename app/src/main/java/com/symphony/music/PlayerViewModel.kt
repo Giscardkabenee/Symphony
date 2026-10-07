@@ -20,6 +20,8 @@ import com.symphony.music.data.LyricsData
 import com.symphony.music.data.MusicRepository
 import com.symphony.music.data.Prefs
 import com.symphony.music.data.ArtOverrides
+import com.symphony.music.data.Episode
+import com.symphony.music.data.Podcast
 import com.symphony.music.data.Song
 import com.symphony.music.data.Station
 import com.symphony.music.data.UpdateUi
@@ -85,6 +87,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** Radio stations started in this session, keyed by their negative id. */
     private val live = HashMap<Long, Song>()
     private val liveStations = HashMap<Long, Station>()
+    private val episodeIds = HashSet<Long>()
+    private val podcastCache = HashMap<Long, Podcast>()
+    private var ticks = 0
     private var controller: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var lyricsJob: Job? = null
@@ -109,6 +114,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 if (c != null && c.isPlaying) {
                     val position = c.currentPosition.coerceAtLeast(0)
                     _state.update { it.copy(position = position) }
+                    // Every five seconds, remember where a podcast episode has got to.
+                    ticks++
+                    val playing = _state.value.current?.id
+                    if (ticks % 10 == 0 && playing != null && playing in episodeIds) {
+                        prefs.saveEpisodePosition(playing, position)
+                    }
                 }
                 delay(500)
             }
@@ -314,6 +325,40 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             if (id < 0) liveStations[id]?.let { prefs.toggleStation(it) } else prefs.toggleFavorite(id)
         }
+    }
+
+    fun rememberPodcast(podcast: Podcast) { podcastCache[podcast.id] = podcast }
+
+    fun podcast(id: Long): Podcast? = podcastCache[id] ?: settings.value.podcasts.firstOrNull { it.id == id }
+
+    fun togglePodcast(podcast: Podcast) { viewModelScope.launch { prefs.togglePodcast(podcast) } }
+
+    /** Plays an episode from where it was left. */
+    fun playEpisode(podcast: Podcast, episode: Episode) {
+        val c = controller ?: return
+        val song = episode.toSong(podcast)
+        live[song.id] = song
+        episodeIds += song.id
+        if (episode.art.isNotBlank()) ArtOverrides.urls[song.id] = episode.art
+        val uri = Uri.parse(episode.url)
+        val item = MediaItem.Builder()
+            .setMediaId(song.id.toString())
+            .setUri(uri)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(episode.title)
+                    .setArtist(podcast.title)
+                    .setArtworkUri(if (episode.art.isNotBlank()) Uri.parse(episode.art) else null)
+                    .build()
+            )
+            .build()
+        var start = settings.value.episodePositions[episode.id] ?: 0L
+        if (episode.durationMs > 0 && start > episode.durationMs - 15_000) start = 0L
+        c.shuffleModeEnabled = false
+        c.setMediaItem(item, start)
+        c.prepare()
+        c.play()
     }
 
     fun toggleStation(station: Station) { viewModelScope.launch { prefs.toggleStation(station) } }

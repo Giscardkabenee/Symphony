@@ -87,6 +87,8 @@ import com.symphony.music.ui.LocalHaze
 import com.symphony.music.ui.NewPlaylistDialog
 import com.symphony.music.ui.NowPlaying
 import com.symphony.music.ui.PlaylistScreen
+import com.symphony.music.ui.PodcastScreen
+import com.symphony.music.ui.PodcastsScreen
 import com.symphony.music.ui.RadioScreen
 import com.symphony.music.ui.SearchScreen
 import com.symphony.music.ui.SettingsScreen
@@ -178,8 +180,12 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openMenu) }
             composable("albums") { AlbumsScreen(vm, openAlbum) }
             composable("artists") { ArtistsScreen(vm, openArtist) }
-            composable("library") { LibraryScreen(vm, openPlaylist, openMenu) { nav.navigate("radio") } }
+            composable("library") { LibraryScreen(vm, openPlaylist, openMenu, { nav.navigate("podcasts") }) { nav.navigate("radio") } }
             composable("search") { SearchScreen(vm, openAlbum, openArtist, openMenu) }
+            composable("podcasts") { PodcastsScreen(vm, { nav.popBackStack() }) { nav.navigate("podcast/$it") } }
+            composable("podcast/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
+                PodcastScreen(vm, e.arguments?.getLong("id") ?: 0L) { nav.popBackStack() }
+            }
             composable("radio") { RadioScreen(vm) { nav.popBackStack() } }
             composable("settings") { SettingsScreen(vm) { nav.popBackStack() } }
             composable("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
