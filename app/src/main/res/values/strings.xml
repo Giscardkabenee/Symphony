@@ -128,4 +128,7 @@
     <string name="podcast_follow">Suivre</string>
     <string name="podcast_unfollow">Ne plus suivre</string>
     <string name="podcast_resume">reprise à %1$s</string>
+    <string name="downloads">Téléchargements</string>
+    <string name="download">Télécharger</string>
+    <string name="download_delete">Supprimer le téléchargement</string>
 </resources>

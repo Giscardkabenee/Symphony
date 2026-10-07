@@ -20,6 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
@@ -179,6 +182,53 @@ fun PodcastsScreen(vm: PlayerViewModel, onBack: () -> Unit, onOpen: (Long) -> Un
                 }
             }
         }
+        // Episodes saved on the phone, playable without a connection.
+        if (q.length < 2 && settings.downloads.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.downloads),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp),
+                )
+            }
+            items(settings.downloads.size) { i ->
+                val saved = settings.downloads[i]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { vm.playEpisode(saved.podcast, saved.episode) }
+                        .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    WebArt(saved.episode.art, saved.podcast.title, Modifier.size(52.dp), RoundedCornerShape(12.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(saved.episode.title, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                        Text(saved.podcast.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = { vm.deleteDownload(saved.episode.id) }) {
+                        Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.download_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Download, progress, or saved (tap to remove). */
+@Composable
+private fun DownloadButton(percent: Int?, saved: Boolean, onDownload: () -> Unit, onDelete: () -> Unit) {
+    when {
+        percent != null -> Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(progress = { percent / 100f }, modifier = Modifier.size(26.dp), strokeWidth = 3.dp)
+        }
+        saved -> IconButton(onClick = onDelete) {
+            Icon(Icons.Rounded.DownloadDone, contentDescription = stringResource(R.string.download_delete))
+        }
+        else -> IconButton(onClick = onDownload) {
+            Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.download), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -212,6 +262,7 @@ fun PodcastScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit) {
         }
     }
     val following = settings.podcasts.any { it.id == podcast.id }
+    val progress by vm.downloadProgress.collectAsStateWithLifecycle()
 
     LazyColumn(contentPadding = PaddingValues(bottom = 210.dp)) {
         item {
@@ -262,7 +313,12 @@ fun PodcastScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit) {
                             Text(details, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
+                    DownloadButton(
+                        percent = progress[episode.id],
+                        saved = settings.downloads.any { it.episode.id == episode.id },
+                        onDownload = { vm.downloadEpisode(podcast, episode) },
+                        onDelete = { vm.deleteDownload(episode.id) },
+                    )
                     Icon(
                         imageVector = if (active) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
                         contentDescription = stringResource(R.string.play),

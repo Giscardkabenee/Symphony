@@ -20,6 +20,7 @@ import com.symphony.music.data.LyricsData
 import com.symphony.music.data.MusicRepository
 import com.symphony.music.data.Prefs
 import com.symphony.music.data.ArtOverrides
+import com.symphony.music.data.Downloads
 import com.symphony.music.data.Episode
 import com.symphony.music.data.Podcast
 import com.symphony.music.data.Song
@@ -327,6 +328,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    val downloadProgress: StateFlow<Map<Long, Int>> = Downloads.progress
+
+    fun downloadEpisode(podcast: Podcast, episode: Episode) = Downloads.start(getApplication(), prefs, podcast, episode)
+
+    fun deleteDownload(id: Long) = Downloads.delete(getApplication(), prefs, id)
+
     fun rememberPodcast(podcast: Podcast) { podcastCache[podcast.id] = podcast }
 
     fun podcast(id: Long): Podcast? = podcastCache[id] ?: settings.value.podcasts.firstOrNull { it.id == id }
@@ -340,7 +347,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         live[song.id] = song
         episodeIds += song.id
         if (episode.art.isNotBlank()) ArtOverrides.urls[song.id] = episode.art
-        val uri = Uri.parse(episode.url)
+        // A downloaded episode plays from the phone, without using the connection.
+        val local = Downloads.file(getApplication(), episode.id)
+        val uri = if (local.exists()) Uri.fromFile(local) else Uri.parse(episode.url)
         val item = MediaItem.Builder()
             .setMediaId(song.id.toString())
             .setUri(uri)

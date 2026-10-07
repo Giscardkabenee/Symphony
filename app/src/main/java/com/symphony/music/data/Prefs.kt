@@ -61,6 +61,8 @@ data class AppSettings(
     val podcasts: List<Podcast> = emptyList(),
     /** Where each started episode was left, in milliseconds. */
     val episodePositions: Map<Long, Long> = emptyMap(),
+    /** Episodes saved on the phone, newest first. */
+    val downloads: List<DownloadedEpisode> = emptyList(),
 )
 
 class Prefs(context: Context) {
@@ -92,6 +94,7 @@ class Prefs(context: Context) {
             stations = decodeStations(p[STATIONS]),
             podcasts = decodePodcasts(p[PODCASTS]),
             episodePositions = decodePositions(p[EPISODE_POSITIONS]),
+            downloads = decodeDownloads(p[DOWNLOADS]),
         )
     }
 
@@ -135,6 +138,17 @@ class Prefs(context: Context) {
             }
             p[PODCASTS] = array.toString()
         }
+    }
+
+    suspend fun addDownload(item: DownloadedEpisode) {
+        store.edit { p ->
+            val list = listOf(item) + decodeDownloads(p[DOWNLOADS]).filter { it.episode.id != item.episode.id }
+            p[DOWNLOADS] = encodeDownloads(list)
+        }
+    }
+
+    suspend fun removeDownload(id: Long) {
+        store.edit { p -> p[DOWNLOADS] = encodeDownloads(decodeDownloads(p[DOWNLOADS]).filter { it.episode.id != id }) }
     }
 
     suspend fun saveEpisodePosition(id: Long, positionMs: Long) {
@@ -193,6 +207,7 @@ class Prefs(context: Context) {
         val PLAYLISTS = stringPreferencesKey("playlists")
         val STATIONS = stringPreferencesKey("radio_stations")
         val PODCASTS = stringPreferencesKey("podcasts")
+        val DOWNLOADS = stringPreferencesKey("podcast_downloads")
         val EPISODE_POSITIONS = stringPreferencesKey("episode_positions")
 
         fun decodeIds(raw: String?): List<Long> =
@@ -218,6 +233,36 @@ class Prefs(context: Context) {
                 (0 until array.length()).map { i ->
                     val o = array.getJSONObject(i)
                     Podcast(o.getLong("id"), o.optString("title"), o.optString("author"), o.optString("feed"), o.optString("art"))
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        fun encodeDownloads(list: List<DownloadedEpisode>): String {
+            val array = JSONArray()
+            for (item in list) {
+                array.put(
+                    JSONObject()
+                        .put("id", item.episode.id).put("title", item.episode.title).put("url", item.episode.url)
+                        .put("art", item.episode.art).put("duration", item.episode.durationMs).put("date", item.episode.date)
+                        .put("pid", item.podcast.id).put("ptitle", item.podcast.title).put("pauthor", item.podcast.author)
+                        .put("pfeed", item.podcast.feedUrl).put("part", item.podcast.art)
+                )
+            }
+            return array.toString()
+        }
+
+        fun decodeDownloads(raw: String?): List<DownloadedEpisode> {
+            if (raw.isNullOrBlank()) return emptyList()
+            return try {
+                val array = JSONArray(raw)
+                (0 until array.length()).map { i ->
+                    val o = array.getJSONObject(i)
+                    DownloadedEpisode(
+                        Podcast(o.optLong("pid"), o.optString("ptitle"), o.optString("pauthor"), o.optString("pfeed"), o.optString("part")),
+                        Episode(o.getLong("id"), o.optString("title"), o.optString("url"), o.optString("art"), o.optLong("duration"), o.optString("date")),
+                    )
                 }
             } catch (e: Exception) {
                 emptyList()

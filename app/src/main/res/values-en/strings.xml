@@ -127,4 +127,7 @@
     <string name="podcast_follow">Follow</string>
     <string name="podcast_unfollow">Unfollow</string>
     <string name="podcast_resume">resume at %1$s</string>
+    <string name="downloads">Downloads</string>
+    <string name="download">Download</string>
+    <string name="download_delete">Delete download</string>
 </resources>
