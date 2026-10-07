@@ -199,12 +199,12 @@ private fun StackCard(title: String, songs: List<Song>, onClick: () -> Unit) {
         Box(Modifier.offset(y = 38.dp).fillMaxWidth().height(134.dp).clip(bodyShape).background(back))
         // Two albums peeking out of the folder.
         covers.getOrNull(2)?.let {
-            Artwork(it.albumId, it.album, Modifier.offset(x = 22.dp, y = 10.dp).size(width = 76.dp, height = 92.dp).rotate(-7f), RoundedCornerShape(10.dp))
+            Artwork(it.albumId, it.album, Modifier.offset(x = 40.dp, y = 12.dp).size(width = 72.dp, height = 92.dp).rotate(-7f), RoundedCornerShape(10.dp))
         }
         covers.getOrNull(1)?.let {
-            Artwork(it.albumId, it.album, Modifier.offset(x = 76.dp, y = 6.dp).size(width = 76.dp, height = 92.dp).rotate(6f), RoundedCornerShape(10.dp))
+            Artwork(it.albumId, it.album, Modifier.offset(x = 90.dp, y = 8.dp).size(width = 72.dp, height = 92.dp).rotate(6f), RoundedCornerShape(10.dp))
         }
-        // Front flap carrying the newest cover as a faint texture, the name and the count.
+        // Front flap: plain colour, the name and the count.
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -214,9 +214,8 @@ private fun StackCard(title: String, songs: List<Song>, onClick: () -> Unit) {
                 .clip(frontShape)
                 .background(tint),
         ) {
-            if (first != null) {
-                Artwork(first.albumId, first.album, Modifier.matchParentSize().graphicsLayer { alpha = 0.22f }, frontShape)
-            }
+            // A soft sheen on the upper edge gives the flap some volume without hurting the text.
+            Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.16f), 0.45f to Color.Transparent)))
             Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                 Text(
