@@ -198,18 +198,18 @@ fun HomeScreen(
 // ---------------------------------------------------------------- Music
 
 @Composable
-private fun Pill(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun Pill(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Box(
-        modifier = Modifier
+        modifier = modifier
             .height(40.dp)
             .clip(CircleShape)
             .background(if (selected) scheme.onSurface else scheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 15.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, color = if (selected) scheme.surface else scheme.onSurfaceVariant)
+        Text(text, maxLines = 1, fontSize = 14.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, color = if (selected) scheme.surface else scheme.onSurfaceVariant)
     }
 }
 
@@ -236,9 +236,10 @@ fun MusicScreen(
 
     Column(Modifier.fillMaxSize()) {
         ScreenTitle(stringResource(R.string.tab_music), stringResource(R.string.library_summary, songs.size, albums.size, artists.size))
-        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(labels.size) { i ->
-                Pill(stringResource(labels[i]), tab == i) {
+        // Four equal pills, so none is cut off at the edge.
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            labels.forEachIndexed { i, label ->
+                Pill(stringResource(label), tab == i, Modifier.weight(1f)) {
                     tab = i
                     store.edit().putInt("music_tab", i).apply()
                 }
