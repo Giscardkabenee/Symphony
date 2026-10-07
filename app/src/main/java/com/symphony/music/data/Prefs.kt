@@ -15,6 +15,17 @@ import org.json.JSONObject
 
 private val Context.settingsStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+/** Names of the simple on/off settings. */
+object Flags {
+    const val DOUBLE_TAP = "double_tap_seek"
+    const val HIDE_VOLUME = "hide_volume"
+    const val HIDE_LABELS = "hide_labels"
+    const val CLASSIC_BAR = "classic_bar"
+    const val BLUR_LYRICS = "blur_lyrics"
+    const val FILTER_SHORT = "filter_short"
+    const val STOP_ON_CLOSE = "stop_on_close"
+}
+
 data class AppSettings(
     /** 0 = system, 1 = light, 2 = dark */
     val theme: Int = 0,
@@ -22,6 +33,13 @@ data class AppSettings(
     val fullCover: Boolean = true,
     val syncedLyrics: Boolean = true,
     val skipSilence: Boolean = false,
+    val doubleTapSeek: Boolean = true,
+    val hideVolume: Boolean = false,
+    val hideLabels: Boolean = false,
+    val classicBar: Boolean = false,
+    val blurLyrics: Boolean = true,
+    val filterShort: Boolean = true,
+    val stopOnClose: Boolean = false,
     val favorites: List<Long> = emptyList(),
     val recents: List<Long> = emptyList(),
     val playlists: Map<String, List<Long>> = emptyMap(),
@@ -37,6 +55,13 @@ class Prefs(context: Context) {
             fullCover = p[FULL_COVER] ?: true,
             syncedLyrics = p[SYNCED] ?: true,
             skipSilence = p[SKIP_SILENCE] ?: false,
+            doubleTapSeek = p[booleanPreferencesKey(Flags.DOUBLE_TAP)] ?: true,
+            hideVolume = p[booleanPreferencesKey(Flags.HIDE_VOLUME)] ?: false,
+            hideLabels = p[booleanPreferencesKey(Flags.HIDE_LABELS)] ?: false,
+            classicBar = p[booleanPreferencesKey(Flags.CLASSIC_BAR)] ?: false,
+            blurLyrics = p[booleanPreferencesKey(Flags.BLUR_LYRICS)] ?: true,
+            filterShort = p[booleanPreferencesKey(Flags.FILTER_SHORT)] ?: true,
+            stopOnClose = p[booleanPreferencesKey(Flags.STOP_ON_CLOSE)] ?: false,
             favorites = decodeIds(p[FAVORITES]),
             recents = decodeIds(p[RECENTS]),
             playlists = decodePlaylists(p[PLAYLISTS]),
@@ -48,6 +73,8 @@ class Prefs(context: Context) {
     suspend fun setFullCover(value: Boolean) { store.edit { it[FULL_COVER] = value } }
     suspend fun setSyncedLyrics(value: Boolean) { store.edit { it[SYNCED] = value } }
     suspend fun setSkipSilence(value: Boolean) { store.edit { it[SKIP_SILENCE] = value } }
+
+    suspend fun setFlag(name: String, value: Boolean) { store.edit { it[booleanPreferencesKey(name)] = value } }
 
     suspend fun toggleFavorite(id: Long) {
         store.edit { p ->

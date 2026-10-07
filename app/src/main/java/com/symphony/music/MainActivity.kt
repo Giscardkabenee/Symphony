@@ -192,6 +192,8 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             onToggle = { vm.toggle() },
             onNext = { vm.next() },
             modifier = Modifier.align(Alignment.BottomCenter),
+            hideLabels = settings.hideLabels,
+            classic = settings.classicBar,
         )
 
         AnimatedVisibility(

@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 class PlaybackService : MediaSessionService() {
 
     private var session: MediaSession? = null
+    private var stopOnClose = false
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -47,7 +48,10 @@ class PlaybackService : MediaSessionService() {
             .setCallback(SessionCallback())
             .build()
         scope.launch {
-            Prefs(this@PlaybackService).flow.collect { player.skipSilenceEnabled = it.skipSilence }
+            Prefs(this@PlaybackService).flow.collect {
+                player.skipSilenceEnabled = it.skipSilence
+                stopOnClose = it.stopOnClose
+            }
         }
     }
 
@@ -55,6 +59,11 @@ class PlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = session?.player
+        if (stopOnClose) {
+            player?.stop()
+            stopSelf()
+            return
+        }
         if (player == null || !player.playWhenReady || player.mediaItemCount == 0) stopSelf()
     }
 

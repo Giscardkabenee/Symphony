@@ -55,7 +55,7 @@ fun buildArtists(songs: List<Song>): List<ArtistInfo> =
 object MusicRepository {
 
     /** Reads every music file (30 s or longer) known to the system media library. */
-    suspend fun loadSongs(context: Context): List<Song> = withContext(Dispatchers.IO) {
+    suspend fun loadSongs(context: Context, filterShort: Boolean = true): List<Song> = withContext(Dispatchers.IO) {
         val out = ArrayList<Song>()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -89,7 +89,7 @@ object MusicRepository {
                 val iData = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
                 while (c.moveToNext()) {
                     val duration = c.getLong(iDuration)
-                    if (duration in 1 until 30_000) continue
+                    if (filterShort && duration in 1 until 30_000) continue
                     val artist = c.getString(iArtist)?.takeUnless { it.isBlank() || it == "<unknown>" } ?: "—"
                     out += Song(
                         id = c.getLong(iId),

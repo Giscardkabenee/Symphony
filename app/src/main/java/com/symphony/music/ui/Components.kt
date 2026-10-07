@@ -205,6 +205,8 @@ fun FloatingBar(
     onToggle: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    hideLabels: Boolean = false,
+    classic: Boolean = false,
 ) {
     Column(
         modifier = modifier
@@ -214,8 +216,10 @@ fun FloatingBar(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         val song = state.current
+        val pill: Shape = if (classic) RoundedCornerShape(18.dp) else CircleShape
+        val useGlass = glass && !classic
         if (song != null) {
-            GlassBox(glass, CircleShape, Modifier.fillMaxWidth().height(60.dp)) {
+            GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(60.dp)) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
@@ -255,7 +259,7 @@ fun FloatingBar(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GlassBox(glass, CircleShape, Modifier.weight(1f).height(64.dp)) {
+            GlassBox(useGlass, pill, Modifier.weight(1f).height(64.dp)) {
                 Row(Modifier.fillMaxSize().padding(5.dp)) {
                     tabs.forEach { tab ->
                         val selected = route == tab.route
@@ -264,7 +268,7 @@ fun FloatingBar(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .clip(CircleShape)
+                                .clip(pill)
                                 .background(
                                     if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f) else Color.Transparent
                                 )
@@ -273,7 +277,7 @@ fun FloatingBar(
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Icon(tab.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = tint)
-                            Text(
+                            if (!hideLabels) Text(
                                 text = stringResource(tab.label),
                                 fontSize = 11.sp,
                                 maxLines = 1,
@@ -285,7 +289,7 @@ fun FloatingBar(
                     }
                 }
             }
-            GlassBox(glass, CircleShape, Modifier.size(64.dp)) {
+            GlassBox(useGlass, pill, Modifier.size(64.dp)) {
                 IconButton(onClick = onSearch, modifier = Modifier.fillMaxSize()) {
                     Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.search))
                 }

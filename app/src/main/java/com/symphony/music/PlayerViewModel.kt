@@ -13,6 +13,7 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.symphony.music.data.AlbumInfo
 import com.symphony.music.data.AppSettings
+import com.symphony.music.data.Flags
 import com.symphony.music.data.ArtistInfo
 import com.symphony.music.data.LyricsData
 import com.symphony.music.data.MusicRepository
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -115,7 +117,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** Reloads the library from the phone's media store. */
     fun refresh() {
         viewModelScope.launch {
-            val list = MusicRepository.loadSongs(getApplication())
+            val filter = prefs.flow.first().filterShort
+            val list = MusicRepository.loadSongs(getApplication(), filter)
             byId = list.associateBy { it.id }
             _songs.value = list
             _loaded.value = true
@@ -208,6 +211,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(position = positionMs) }
     }
 
+    /** Jumps forward or back by the given number of milliseconds. */
+    fun seekBy(deltaMs: Long) {
+        val c = controller ?: return
+        val limit = c.duration.coerceAtLeast(0)
+        seekTo((c.currentPosition + deltaMs).coerceIn(0, limit))
+    }
+
     fun toggleShuffle() {
         val c = controller ?: return
         c.shuffleModeEnabled = !c.shuffleModeEnabled
@@ -248,6 +258,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun setFullCover(value: Boolean) { viewModelScope.launch { prefs.setFullCover(value) } }
     fun setSyncedLyrics(value: Boolean) { viewModelScope.launch { prefs.setSyncedLyrics(value) } }
     fun setSkipSilence(value: Boolean) { viewModelScope.launch { prefs.setSkipSilence(value) } }
+    fun setFlag(name: String, value: Boolean) {
+        viewModelScope.launch {
+            prefs.setFlag(name, value)
+            if (name == Flags.FILTER_SHORT) refresh()
+        }
+    }
+
     fun toggleFavorite(id: Long) { viewModelScope.launch { prefs.toggleFavorite(id) } }
     fun createPlaylist(name: String) { viewModelScope.launch { prefs.createPlaylist(name) } }
     fun deletePlaylist(name: String) { viewModelScope.launch { prefs.deletePlaylist(name) } }

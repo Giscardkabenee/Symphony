@@ -20,7 +20,14 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.FilterAlt
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Label
 import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.QueueMusic
@@ -47,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.symphony.music.PlayerViewModel
 import com.symphony.music.R
 import com.symphony.music.data.AlbumInfo
+import com.symphony.music.data.Flags
 import com.symphony.music.data.Song
 import com.symphony.music.data.artworkUri
 
@@ -113,11 +121,11 @@ fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onAlbum: (Long) -> U
         val byId = albums.associateBy { it.id }
         vm.songsFor(settings.recents).map { it.albumId }.distinct().mapNotNull { byId[it] }.take(10)
     }
-    val added = remember(songs) { songs.sortedByDescending { it.dateAdded }.take(25) }
+    val added = songs
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item {
-            ScreenTitle(stringResource(R.string.app_name)) {
+            ScreenTitle(stringResource(R.string.tab_home)) {
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
                 }
@@ -138,7 +146,7 @@ fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onAlbum: (Long) -> U
             }
         }
         if (added.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.recently_added)) }
+            item { SectionHeader(stringResource(R.string.all_songs)) }
             items(added.size) { i ->
                 val song = added[i]
                 SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(added, i) }
@@ -211,6 +219,7 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
     val settings by vm.settings.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     var creating by remember { mutableStateOf(false) }
+    val recent = remember(songs) { songs.sortedByDescending { it.dateAdded }.take(25) }
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item {
@@ -233,13 +242,12 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
             val name = names[i]
             PlaylistRow(name, settings.playlists[name]?.size ?: 0, Icons.Rounded.QueueMusic) { onPlaylist(name) }
         }
-        item { SectionHeader(stringResource(R.string.songs)) }
-        if (songs.isEmpty()) {
-            item { EmptyState(stringResource(R.string.empty_library)) }
+        if (recent.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.recently_added)) }
         }
-        items(songs.size) { i ->
-            val song = songs[i]
-            SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(songs, i) }
+        items(recent.size) { i ->
+            val song = recent[i]
+            SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(recent, i) }
         }
     }
 
@@ -598,7 +606,13 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
         item { SettingsLabel(stringResource(R.string.playback)) }
         item {
             SettingsCard {
-                SettingSwitch(Icons.Rounded.VolumeOff, stringResource(R.string.skip_silence), stringResource(R.string.skip_silence_desc), settings.skipSilence) { vm.setSkipSilence(it) }
+                SettingSwitch(Icons.Rounded.GraphicEq, stringResource(R.string.skip_silence), stringResource(R.string.skip_silence_desc), settings.skipSilence) { vm.setSkipSilence(it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.FastForward, stringResource(R.string.double_tap), stringResource(R.string.double_tap_desc), settings.doubleTapSeek) { vm.setFlag(Flags.DOUBLE_TAP, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.Stop, stringResource(R.string.stop_on_close), stringResource(R.string.stop_on_close_desc), settings.stopOnClose) { vm.setFlag(Flags.STOP_ON_CLOSE, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.VolumeOff, stringResource(R.string.hide_volume), stringResource(R.string.hide_volume_desc), settings.hideVolume) { vm.setFlag(Flags.HIDE_VOLUME, it) }
             }
         }
         item { SettingsLabel(stringResource(R.string.appearance)) }
@@ -630,6 +644,18 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.Fullscreen, stringResource(R.string.full_cover), stringResource(R.string.full_cover_desc), settings.fullCover) { vm.setFullCover(it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.Lyrics, stringResource(R.string.synced_lyrics), stringResource(R.string.synced_lyrics_desc), settings.syncedLyrics) { vm.setSyncedLyrics(it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.BlurOn, stringResource(R.string.blur_lyrics), stringResource(R.string.blur_lyrics_desc), settings.blurLyrics) { vm.setFlag(Flags.BLUR_LYRICS, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.Menu, stringResource(R.string.classic_bar), stringResource(R.string.classic_bar_desc), settings.classicBar) { vm.setFlag(Flags.CLASSIC_BAR, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.Label, stringResource(R.string.hide_labels), stringResource(R.string.hide_labels_desc), settings.hideLabels) { vm.setFlag(Flags.HIDE_LABELS, it) }
+            }
+        }
+        item { SettingsLabel(stringResource(R.string.local_music)) }
+        item {
+            SettingsCard {
+                SettingSwitch(Icons.Rounded.FilterAlt, stringResource(R.string.filter_short), stringResource(R.string.filter_short_desc), settings.filterShort) { vm.setFlag(Flags.FILTER_SHORT, it) }
             }
         }
     }

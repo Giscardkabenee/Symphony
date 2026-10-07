@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tab_home">Home</string>
+    <string name="tab_home">Songs</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_artists">Artists</string>
     <string name="tab_library">Library</string>
@@ -62,4 +62,20 @@
     <string name="skip_silence">Skip silence</string>
     <string name="skip_silence_desc">Trims gaps between passages</string>
     <string name="volume">Volume</string>
+    <string name="all_songs">All songs</string>
+    <string name="double_tap">Double tap to seek</string>
+    <string name="double_tap_desc">Double tap the sides of the cover to skip 5 seconds</string>
+    <string name="stop_on_close">Stop music on close</string>
+    <string name="stop_on_close_desc">Stops playback when the app is swiped away from recent apps</string>
+    <string name="hide_volume">Hide volume bar</string>
+    <string name="hide_volume_desc">Removes the volume slider from the player</string>
+    <string name="blur_lyrics">Blur unfocused lyrics</string>
+    <string name="blur_lyrics_desc">Keeps the spotlight on the current line</string>
+    <string name="classic_bar">Classic navigation bar</string>
+    <string name="classic_bar_desc">Opaque mini player and tabs with squarer corners</string>
+    <string name="hide_labels">Hide navigation bar labels</string>
+    <string name="hide_labels_desc">Shows only icons in the bar</string>
+    <string name="local_music">Local music</string>
+    <string name="filter_short">Filter non-music audio</string>
+    <string name="filter_short_desc">Hides clips shorter than 30 seconds</string>
 </resources>

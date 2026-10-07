@@ -92,9 +92,9 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
         ) {
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when (mode) {
-                    MODE_QUEUE -> QueueList(state, vm)
-                    MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics) { vm.seekTo(it) }
-                    else -> Cover(song, settings.fullCover, tint, onClose)
+                    MODE_QUEUE -> QueueList(state, vm, onMore)
+                    MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics) { vm.seekTo(it) }
+                    else -> Cover(song, settings.fullCover, tint, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
                 }
                 Box(
                     modifier = Modifier
@@ -117,6 +117,7 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                 } else null,
                 hasLyrics = lyrics != null,
                 mode = mode,
+                showVolume = !settings.hideVolume,
                 onMode = { mode = if (mode == it) MODE_COVER else it },
                 onMore = { onMore(song) },
                 onArtist = { onArtist(song.artist) },
@@ -135,7 +136,13 @@ private fun currentLine(lyrics: LyricsData?, position: Long): Int {
 }
 
 @Composable
-private fun Cover(song: Song, fullCover: Boolean, tint: Color, onClose: () -> Unit) {
+private fun Cover(song: Song, fullCover: Boolean, tint: Color, doubleTap: Boolean, onSeekBy: (Long) -> Unit, onClose: () -> Unit) {
+    // Double tap on the left or right half of the cover skips 5 seconds back or forward.
+    val taps = Modifier.pointerInput(doubleTap) {
+        detectTapGestures(onDoubleTap = { offset ->
+            if (doubleTap) onSeekBy(if (offset.x < size.width / 2f) -5000L else 5000L)
+        })
+    }
     val drag = Modifier.pointerInput(Unit) {
         var total = 0f
         detectVerticalDragGestures(
@@ -144,7 +151,7 @@ private fun Cover(song: Song, fullCover: Boolean, tint: Color, onClose: () -> Un
         ) { _, amount -> total += amount }
     }
     if (fullCover) {
-        Box(Modifier.fillMaxSize().then(drag)) {
+        Box(Modifier.fillMaxSize().then(drag).then(taps)) {
             Artwork(song.albumId, song.album, Modifier.fillMaxSize(), RectangleShape)
             Box(
                 Modifier
@@ -155,18 +162,36 @@ private fun Cover(song: Song, fullCover: Boolean, tint: Color, onClose: () -> Un
             )
         }
     } else {
-        Box(Modifier.fillMaxSize().then(drag).statusBarsPadding().padding(32.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().then(drag).then(taps).statusBarsPadding().padding(32.dp), contentAlignment = Alignment.Center) {
             Artwork(song.albumId, song.album, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(16.dp))
         }
     }
 }
 
 @Composable
-private fun QueueList(state: PlayerState, vm: PlayerViewModel) {
+private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(top = 44.dp, bottom = 12.dp),
     ) {
+        state.current?.let { now ->
+            item {
+                Row(Modifier.fillMaxWidth().padding(start = 28.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Artwork(now.albumId, now.album, Modifier.size(56.dp), RoundedCornerShape(10.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(now.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(now.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Soft)
+                    }
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.16f)).clickable { onMore(now) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.more))
+                    }
+                }
+            }
+        }
         item {
             Row(Modifier.fillMaxWidth().padding(start = 28.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.queue), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
@@ -201,7 +226,7 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel) {
 }
 
 @Composable
-private fun LyricsView(lyrics: LyricsData?, activeLine: Int, highlight: Boolean, onSeek: (Long) -> Unit) {
+private fun LyricsView(lyrics: LyricsData?, activeLine: Int, highlight: Boolean, blurOthers: Boolean, onSeek: (Long) -> Unit) {
     if (lyrics == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(stringResource(R.string.no_lyrics), color = Soft)
@@ -224,7 +249,7 @@ private fun LyricsView(lyrics: LyricsData?, activeLine: Int, highlight: Boolean,
             val current = !follow || i == activeLine
             var modifier: Modifier = Modifier.fillMaxWidth()
             if (lyrics.synced) modifier = modifier.clickable { onSeek(line.timeMs) }
-            if (!current) modifier = modifier.blur(1.5.dp)
+            if (!current && blurOthers) modifier = modifier.blur(1.5.dp)
             Text(
                 text = line.text,
                 modifier = modifier,
@@ -245,6 +270,7 @@ private fun Controls(
     lyricLine: String?,
     hasLyrics: Boolean,
     mode: Int,
+    showVolume: Boolean,
     onMode: (Int) -> Unit,
     onMore: () -> Unit,
     onArtist: () -> Unit,
@@ -255,7 +281,7 @@ private fun Controls(
         inactiveTrackColor = Color.White.copy(alpha = 0.24f),
     )
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 28.dp, end = 28.dp, top = 8.dp, bottom = 16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (mode != MODE_QUEUE) Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
@@ -331,7 +357,7 @@ private fun Controls(
         val maxVolume = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
         var volume by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()) }
         val volumeLabel = stringResource(R.string.volume)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (showVolume) Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.VolumeDown, contentDescription = null, tint = Soft, modifier = Modifier.size(20.dp))
             Slider(
                 value = volume,

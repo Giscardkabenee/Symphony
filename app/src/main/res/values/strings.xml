@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Symphony</string>
-    <string name="tab_home">Accueil</string>
+    <string name="tab_home">Titres</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_artists">Artistes</string>
     <string name="tab_library">Bibliothèque</string>
@@ -63,4 +63,20 @@
     <string name="skip_silence">Passer les silences</string>
     <string name="skip_silence_desc">Coupe les blancs entre les passages</string>
     <string name="volume">Volume</string>
+    <string name="all_songs">Tous les titres</string>
+    <string name="double_tap">Double appui pour avancer</string>
+    <string name="double_tap_desc">Sur les côtés de la pochette, saute 5 secondes</string>
+    <string name="stop_on_close">Arrêter en fermant l\'application</string>
+    <string name="stop_on_close_desc">La musique s\'arrête quand l\'application est balayée des applis récentes</string>
+    <string name="hide_volume">Masquer la barre de volume</string>
+    <string name="hide_volume_desc">Retire le curseur de volume du lecteur</string>
+    <string name="blur_lyrics">Flouter les autres lignes</string>
+    <string name="blur_lyrics_desc">Garde l\'attention sur la ligne chantée</string>
+    <string name="classic_bar">Barre de navigation classique</string>
+    <string name="classic_bar_desc">Mini-player et onglets opaques, aux coins moins arrondis</string>
+    <string name="hide_labels">Masquer les libellés des onglets</string>
+    <string name="hide_labels_desc">Affiche seulement les icônes dans la barre</string>
+    <string name="local_music">Musique locale</string>
+    <string name="filter_short">Filtrer les sons non musicaux</string>
+    <string name="filter_short_desc">Masque les extraits de moins de 30 secondes</string>
 </resources>
