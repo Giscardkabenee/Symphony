@@ -23,7 +23,12 @@ data class Song(
     val bitrate: Int = 0,
 ) {
     val uri: Uri get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-    val artUri: Uri get() = artworkUri(albumId)
+    val artUri: Uri get() = ArtOverrides.urls[albumId]?.let { Uri.parse(it) } ?: artworkUri(albumId)
+}
+
+/** Online pictures that stand in for an album cover, for example a radio station's logo. */
+object ArtOverrides {
+    val urls = java.util.concurrent.ConcurrentHashMap<Long, String>()
 }
 
 data class AlbumInfo(

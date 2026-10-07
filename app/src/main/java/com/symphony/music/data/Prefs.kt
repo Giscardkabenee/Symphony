@@ -55,6 +55,8 @@ data class AppSettings(
     /** Song id to number of times it was started. */
     val playCounts: Map<Long, Int> = emptyMap(),
     val playlists: Map<String, List<Long>> = emptyMap(),
+    /** Favourite radio stations. */
+    val stations: List<Station> = emptyList(),
 )
 
 class Prefs(context: Context) {
@@ -83,6 +85,7 @@ class Prefs(context: Context) {
             recents = decodeIds(p[RECENTS]),
             playCounts = decodeCounts(p[PLAY_COUNTS]),
             playlists = decodePlaylists(p[PLAYLISTS]),
+            stations = decodeStations(p[STATIONS]),
         )
     }
 
@@ -98,6 +101,21 @@ class Prefs(context: Context) {
         store.edit { p ->
             val ids = decodeIds(p[FAVORITES])
             p[FAVORITES] = encodeIds(if (id in ids) ids - id else listOf(id) + ids)
+        }
+    }
+
+    suspend fun toggleStation(station: Station) {
+        store.edit { p ->
+            val list = decodeStations(p[STATIONS])
+            val next = if (list.any { it.id == station.id }) list.filter { it.id != station.id } else listOf(station) + list
+            val array = JSONArray()
+            for (s in next) {
+                array.put(
+                    JSONObject().put("id", s.id).put("name", s.name).put("url", s.url).put("icon", s.icon)
+                        .put("country", s.country).put("tags", s.tags).put("bitrate", s.bitrate)
+                )
+            }
+            p[STATIONS] = array.toString()
         }
     }
 
@@ -144,9 +162,23 @@ class Prefs(context: Context) {
         val RECENTS = stringPreferencesKey("recents")
         val PLAY_COUNTS = stringPreferencesKey("play_counts")
         val PLAYLISTS = stringPreferencesKey("playlists")
+        val STATIONS = stringPreferencesKey("radio_stations")
 
         fun decodeIds(raw: String?): List<Long> =
             raw?.split(',')?.mapNotNull { it.trim().toLongOrNull() } ?: emptyList()
+
+        fun decodeStations(raw: String?): List<Station> {
+            if (raw.isNullOrBlank()) return emptyList()
+            return try {
+                val array = JSONArray(raw)
+                (0 until array.length()).map { i ->
+                    val o = array.getJSONObject(i)
+                    Station(o.getLong("id"), o.optString("name"), o.optString("url"), o.optString("icon"), o.optString("country"), o.optString("tags"), o.optInt("bitrate"))
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
 
         fun decodeCounts(raw: String?): Map<Long, Int> {
             if (raw.isNullOrBlank()) return emptyMap()

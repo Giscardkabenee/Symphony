@@ -165,9 +165,13 @@ class PlaybackService : MediaSessionService() {
         ): ListenableFuture<MutableList<MediaItem>> {
             val resolved = mediaItems.map { item ->
                 val id = item.mediaId.toLongOrNull()
-                if (id == null) item else item.buildUpon()
-                    .setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id))
-                    .build()
+                when {
+                    // Radio streams carry their own address.
+                    id == null || id < 0 -> item.buildUpon().setUri(item.requestMetadata.mediaUri).build()
+                    else -> item.buildUpon()
+                        .setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id))
+                        .build()
+                }
             }.toMutableList()
             return Futures.immediateFuture(resolved)
         }

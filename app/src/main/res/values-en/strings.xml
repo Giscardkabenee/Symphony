@@ -107,4 +107,13 @@
     <string name="most_played">Most played</string>
     <string name="artists_count">%1$d artists</string>
     <string name="playlists_count">%1$d playlists</string>
+    <string name="radios">Radio</string>
+    <string name="radio_desc">Live stations from around the world</string>
+    <string name="radio_search">Station name</string>
+    <string name="radio_popular">Popular</string>
+    <string name="radio_data">Radio streams over the Internet and uses mobile data.</string>
+    <string name="radio_error">Could not load stations. Check your connection</string>
+    <string name="radio_empty">No station found</string>
+    <string name="radio_no_favorites">No favourite station yet</string>
+    <string name="live">Live</string>
 </resources>

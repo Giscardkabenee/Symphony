@@ -92,6 +92,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import com.symphony.music.PlayerState
 import com.symphony.music.R
+import com.symphony.music.data.ArtOverrides
 import com.symphony.music.data.ArtistImages
 import com.symphony.music.data.Song
 import com.symphony.music.data.artworkUri
@@ -158,7 +159,7 @@ fun Artwork(
             fontWeight = FontWeight.Bold,
         )
         AsyncImage(
-            model = artworkUri(albumId),
+            model = ArtOverrides.urls[albumId] ?: artworkUri(albumId),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize(),

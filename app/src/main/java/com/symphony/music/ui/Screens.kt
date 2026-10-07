@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
@@ -301,7 +302,7 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
 // ---------------------------------------------------------------- Library
 
 @Composable
-fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (Song) -> Unit) {
+fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (Song) -> Unit, onRadio: () -> Unit) {
     val songs by vm.songs.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -314,6 +315,31 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
                 IconButton(onClick = { creating = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.new_playlist))
                 }
+            }
+        }
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .clickable(onClick = onRadio)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Rounded.Radio, contentDescription = null, tint = MaterialTheme.colorScheme.surface)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.radios), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.radio_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item { SectionHeader(stringResource(R.string.playlists)) }

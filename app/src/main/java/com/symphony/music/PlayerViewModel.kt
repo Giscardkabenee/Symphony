@@ -2,6 +2,7 @@ package com.symphony.music
 
 import android.app.Application
 import android.content.ComponentName
+import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,7 +19,9 @@ import com.symphony.music.data.ArtistInfo
 import com.symphony.music.data.LyricsData
 import com.symphony.music.data.MusicRepository
 import com.symphony.music.data.Prefs
+import com.symphony.music.data.ArtOverrides
 import com.symphony.music.data.Song
+import com.symphony.music.data.Station
 import com.symphony.music.data.UpdateUi
 import com.symphony.music.data.Updater
 import com.symphony.music.data.buildAlbums
@@ -79,6 +82,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val update: StateFlow<UpdateUi> = _update.asStateFlow()
 
     private var byId: Map<Long, Song> = emptyMap()
+    /** Radio stations started in this session, keyed by their negative id. */
+    private val live = HashMap<Long, Song>()
+    private val liveStations = HashMap<Long, Station>()
     private var controller: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var lyricsJob: Job? = null
@@ -143,9 +149,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val queue = ArrayList<Song>()
         for (i in 0 until c.mediaItemCount) {
             val id = c.getMediaItemAt(i).mediaId.toLongOrNull() ?: continue
-            byId[id]?.let { queue += it }
+            (byId[id] ?: live[id])?.let { queue += it }
         }
-        val current = c.currentMediaItem?.mediaId?.toLongOrNull()?.let { byId[it] }
+        val current = c.currentMediaItem?.mediaId?.toLongOrNull()?.let { byId[it] ?: live[it] }
         val previous = _state.value.current
         val duration = c.duration.takeIf { it > 0 } ?: current?.duration ?: 0L
         _state.value = PlayerState(
@@ -166,6 +172,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         _lyrics.value = null
         _lyricsStatus.value = 0
         if (song == null) return
+        if (song.id < 0) {
+            // A live stream: no lyrics, no play count.
+            _lyricsStatus.value = 3
+            return
+        }
         lyricsJob = viewModelScope.launch {
             prefs.addRecent(song.id)
             _lyricsStatus.value = 1
@@ -299,7 +310,39 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun toggleFavorite(id: Long) { viewModelScope.launch { prefs.toggleFavorite(id) } }
+    fun toggleFavorite(id: Long) {
+        viewModelScope.launch {
+            if (id < 0) liveStations[id]?.let { prefs.toggleStation(it) } else prefs.toggleFavorite(id)
+        }
+    }
+
+    fun toggleStation(station: Station) { viewModelScope.launch { prefs.toggleStation(station) } }
+
+    /** Starts a live radio stream in the same player as the music. */
+    fun playStation(station: Station) {
+        val c = controller ?: return
+        val song = station.toSong()
+        live[song.id] = song
+        liveStations[song.id] = station
+        if (station.icon.isNotBlank()) ArtOverrides.urls[song.id] = station.icon
+        val uri = Uri.parse(station.url)
+        val item = MediaItem.Builder()
+            .setMediaId(song.id.toString())
+            .setUri(uri)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(station.name)
+                    .setArtist(song.artist)
+                    .setArtworkUri(if (station.icon.isNotBlank()) Uri.parse(station.icon) else null)
+                    .build()
+            )
+            .build()
+        c.shuffleModeEnabled = false
+        c.setMediaItem(item)
+        c.prepare()
+        c.play()
+    }
     fun createPlaylist(name: String) { viewModelScope.launch { prefs.createPlaylist(name) } }
     fun deletePlaylist(name: String) { viewModelScope.launch { prefs.deletePlaylist(name) } }
     fun addToPlaylist(name: String, id: Long) { viewModelScope.launch { prefs.addToPlaylist(name, id) } }
