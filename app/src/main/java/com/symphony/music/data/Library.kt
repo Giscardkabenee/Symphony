@@ -3,6 +3,7 @@ package com.symphony.music.data
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,6 +19,8 @@ data class Song(
     val year: Int,
     val dateAdded: Long,
     val path: String,
+    /** Bits per second when the system knows it, otherwise 0. */
+    val bitrate: Int = 0,
 ) {
     val uri: Uri get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
     val artUri: Uri get() = artworkUri(albumId)
@@ -69,10 +72,12 @@ object MusicRepository {
             MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.DATA,
         )
+        // The bitrate column only exists from Android 11.
+        val columns = if (Build.VERSION.SDK_INT >= 30) projection + "bitrate" else projection
         try {
             context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                projection,
+                columns,
                 "${MediaStore.Audio.Media.IS_MUSIC} != 0",
                 null,
                 "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC",
@@ -87,6 +92,7 @@ object MusicRepository {
                 val iYear = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
                 val iAdded = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                 val iData = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                val iBitrate = c.getColumnIndex("bitrate")
                 while (c.moveToNext()) {
                     val duration = c.getLong(iDuration)
                     if (filterShort && duration in 1 until 30_000) continue
@@ -102,6 +108,7 @@ object MusicRepository {
                         year = c.getInt(iYear),
                         dateAdded = c.getLong(iAdded),
                         path = c.getString(iData) ?: "",
+                        bitrate = if (iBitrate >= 0) c.getInt(iBitrate) else 0,
                     )
                 }
             }

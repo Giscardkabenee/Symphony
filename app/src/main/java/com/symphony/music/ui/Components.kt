@@ -112,6 +112,24 @@ suspend fun dominantColor(context: Context, uri: Uri): Color? = withContext(Disp
     }
 }
 
+/** Up to three distinct colours from the cover, for the drifting glow behind the player. */
+suspend fun paletteColors(context: Context, uri: Uri): List<Color> = withContext(Dispatchers.IO) {
+    try {
+        val request = ImageRequest.Builder(context).data(uri).size(128).allowHardware(false).build()
+        val drawable = context.imageLoader.execute(request).drawable ?: return@withContext emptyList()
+        val palette = Palette.from(drawable.toBitmap()).generate()
+        listOfNotNull(
+            palette.vibrantSwatch,
+            palette.darkVibrantSwatch,
+            palette.mutedSwatch,
+            palette.lightVibrantSwatch,
+            palette.dominantSwatch,
+        ).map { Color(it.rgb) }.distinct().take(3)
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
+
 /** Album cover with a coloured initial behind it when the file has no artwork. */
 @Composable
 fun Artwork(

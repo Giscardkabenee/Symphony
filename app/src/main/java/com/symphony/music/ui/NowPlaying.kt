@@ -6,7 +6,11 @@ import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -16,6 +20,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +40,7 @@ import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.MusicNote
@@ -54,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -80,7 +87,10 @@ import com.symphony.music.PlayerViewModel
 import com.symphony.music.R
 import com.symphony.music.data.LyricsData
 import com.symphony.music.data.Song
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private val DefaultTint = Color(0xFF1E1E24)
 private val Soft = Color.White.copy(alpha = 0.72f)
@@ -115,6 +125,16 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
         animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow),
         label = "cover",
     )
+    val glows by produceState(emptyList<Color>(), song.albumId) {
+        value = paletteColors(context, song.artUri)
+    }
+    val drift = rememberInfiniteTransition(label = "drift")
+    val phase by drift.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(28_000, easing = LinearEasing)),
+        label = "phase",
+    )
     var mode by rememberSaveable { mutableStateOf(MODE_COVER) }
     val activeLine = remember(lyrics, state.position) { currentLine(lyrics, state.position) }
 
@@ -137,6 +157,28 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                         }.blur(90.dp),
                         RectangleShape,
                     )
+                }
+                // Soft colour glows taken from the cover drift slowly behind everything.
+                if (glows.isNotEmpty()) {
+                    Canvas(Modifier.fillMaxSize()) {
+                        val reach = size.width * 0.8f
+                        glows.forEachIndexed { i, colour ->
+                            val turn = phase * (if (i == 1) 2f else 1f) + i * 2.1f
+                            val centre = Offset(
+                                size.width * (0.5f + 0.4f * cos(turn)),
+                                size.height * (0.62f + 0.28f * sin(turn * (if (i == 2) 2f else 1f) + i)),
+                            )
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(colour.copy(alpha = 0.55f), Color.Transparent),
+                                    center = centre,
+                                    radius = reach,
+                                ),
+                                radius = reach,
+                                center = centre,
+                            )
+                        }
+                    }
                 }
                 // Darker towards the bottom so the controls stay readable, with no visible band.
                 Box(
@@ -219,6 +261,18 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                 )
             }
         }
+    }
+}
+
+/** "Lossless" for uncompressed formats, otherwise judged from the file's bitrate. */
+@Composable
+private fun qualityLabel(song: Song): String {
+    val extension = song.path.substringAfterLast('.', "").lowercase()
+    return when {
+        extension in setOf("flac", "wav", "aiff", "aif", "ape", "alac", "dsf") -> stringResource(R.string.quality_lossless)
+        song.bitrate >= 256_000 -> stringResource(R.string.quality_high)
+        song.bitrate > 0 -> stringResource(R.string.quality_standard)
+        else -> extension.uppercase()
     }
 }
 
@@ -460,6 +514,11 @@ private fun Controls(
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatTime(shown.toLong()), style = MaterialTheme.typography.labelMedium, color = Soft)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Headphones, contentDescription = null, tint = Soft, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(qualityLabel(song), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = Soft)
+            }
             Text("-" + formatTime((state.duration - shown.toLong()).coerceAtLeast(0)), style = MaterialTheme.typography.labelMedium, color = Soft)
         }
 

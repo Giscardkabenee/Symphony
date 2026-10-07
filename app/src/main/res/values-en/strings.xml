@@ -101,4 +101,7 @@
     <string name="lyrics_error">The lyrics search failed</string>
     <string name="retry">Try again</string>
     <string name="tap_for_lyrics">Tap for lyrics</string>
+    <string name="quality_lossless">Lossless</string>
+    <string name="quality_high">High quality</string>
+    <string name="quality_standard">Standard quality</string>
 </resources>

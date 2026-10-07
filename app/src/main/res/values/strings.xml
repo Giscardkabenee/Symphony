@@ -102,4 +102,7 @@
     <string name="lyrics_error">La recherche des paroles a échoué</string>
     <string name="retry">Réessayer</string>
     <string name="tap_for_lyrics">Toucher pour les paroles</string>
+    <string name="quality_lossless">Sans perte</string>
+    <string name="quality_high">Haute qualité</string>
+    <string name="quality_standard">Qualité standard</string>
 </resources>
