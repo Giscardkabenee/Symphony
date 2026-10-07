@@ -56,7 +56,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -209,30 +208,11 @@ fun SongRow(
 /** Shared blur source: the screen content that glass surfaces blur and refract. */
 val LocalHaze = staticCompositionLocalOf<HazeState?> { null }
 
-/**
- * Water-drop lighting: a soft sheen from the top, a bright spot where light enters,
- * a faint glow where it leaves at the bottom edge, and a shadow under the curve.
- */
+/** Glass lighting kept quiet: a faint sheen from the top and a thin glow along the bottom edge. */
 fun Modifier.dropletShine(strength: Float = 1f): Modifier = drawBehind {
-    val w = size.width
-    val h = size.height
-    if (w <= 0f || h <= 0f) return@drawBehind
-    drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.20f * strength), 0.55f to Color.Transparent))
-    drawRect(
-        Brush.radialGradient(
-            colors = listOf(Color.White.copy(alpha = 0.34f * strength), Color.Transparent),
-            center = Offset(w * 0.2f, 0f),
-            radius = h * 1.1f,
-        )
-    )
-    drawRect(
-        Brush.radialGradient(
-            colors = listOf(Color.White.copy(alpha = 0.18f * strength), Color.Transparent),
-            center = Offset(w * 0.82f, h),
-            radius = h * 0.9f,
-        )
-    )
-    drawRect(Brush.verticalGradient(0.62f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.18f * strength)))
+    if (size.width <= 0f || size.height <= 0f) return@drawBehind
+    drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.12f * strength), 0.5f to Color.Transparent))
+    drawRect(Brush.verticalGradient(0.82f to Color.Transparent, 1f to Color.White.copy(alpha = 0.07f * strength)))
 }
 
 /** A small glass drop: translucent fill, droplet lighting and a bright rim. */
@@ -242,7 +222,7 @@ fun Modifier.liquidDrop(shape: Shape, tint: Color = Color.White.copy(alpha = 0.1
         .dropletShine()
         .border(
             1.dp,
-            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.22f))),
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.38f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.16f))),
             shape,
         )
 

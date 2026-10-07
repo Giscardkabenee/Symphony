@@ -127,9 +127,26 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
             // Blurred copy of the cover behind the whole screen (Android 12 and later).
             if (settings.fullCover && Build.VERSION.SDK_INT >= 31) {
                 Crossfade(targetState = song, animationSpec = tween(700), label = "backdrop") { s ->
-                    Artwork(s.albumId, s.album, Modifier.fillMaxSize().blur(56.dp), RectangleShape)
+                    Artwork(
+                        s.albumId,
+                        s.album,
+                        Modifier.fillMaxSize().graphicsLayer {
+                            scaleX = 1.5f
+                            scaleY = 1.5f
+                        }.blur(90.dp),
+                        RectangleShape,
+                    )
                 }
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)))
+                // Darker towards the bottom so the controls stay readable, with no visible band.
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.08f),
+                            0.5f to Color.Black.copy(alpha = 0.22f),
+                            1f to Color.Black.copy(alpha = 0.58f),
+                        )
+                    )
+                )
             }
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxWidth().weight(1f)) {
@@ -138,7 +155,7 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                             MODE_QUEUE -> QueueList(state, vm, onMore)
                             MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics, lyricsStatus, lyricsError, { vm.retryLyrics() }) { vm.seekTo(it) }
                             else -> Crossfade(targetState = song, animationSpec = tween(520), modifier = Modifier.fillMaxSize(), label = "song") { s ->
-                                Cover(s, settings.fullCover, coverScale, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
+                                Cover(s, settings.fullCover, if (settings.fullCover) 1f else coverScale, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
                             }
                         }
                     }
@@ -214,9 +231,9 @@ private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boole
                         drawContent()
                         drawRect(
                             brush = Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.18f to Color.Black,
-                                0.72f to Color.Black,
+                                0f to Color.Black.copy(alpha = 0.6f),
+                                0.12f to Color.Black,
+                                0.62f to Color.Black,
                                 1f to Color.Transparent,
                             ),
                             blendMode = BlendMode.DstIn,
@@ -484,9 +501,9 @@ private fun Controls(
                 .fillMaxWidth()
                 .padding(top = 12.dp)
                 .height(58.dp)
-                .liquidDrop(CircleShape, Color.White.copy(alpha = 0.10f))
+                .liquidDrop(CircleShape, Color.White.copy(alpha = 0.12f))
                 .padding(horizontal = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ToggleIcon(Icons.Rounded.Shuffle, stringResource(R.string.shuffle), state.shuffle) { vm.toggleShuffle() }
@@ -517,7 +534,7 @@ private fun ThinSlider(
     onChange: (Float) -> Unit,
 ) {
     var active by remember { mutableStateOf(false) }
-    val thickness by animateDpAsState(if (active) 10.dp else 5.dp, label = "thickness")
+    val thickness by animateDpAsState(if (active) 11.dp else 7.dp, label = "thickness")
     val fraction = if (max > 0f) (value / max).coerceIn(0f, 1f) else 0f
     val change by rememberUpdatedState(onChange)
     val finished by rememberUpdatedState(onFinished)
@@ -557,7 +574,7 @@ private fun ThinSlider(
             },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Box(Modifier.fillMaxWidth().height(thickness).clip(CircleShape).background(Color.White.copy(alpha = 0.24f))) {
+        Box(Modifier.fillMaxWidth().height(thickness).clip(CircleShape).background(Color.White.copy(alpha = 0.3f))) {
             Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Color.White))
         }
     }
@@ -585,6 +602,6 @@ private fun ToggleIcon(icon: ImageVector, label: String, active: Boolean, onClic
             .clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
     }
 }
