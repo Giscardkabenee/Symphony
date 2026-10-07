@@ -3,13 +3,17 @@ package com.symphony.music.ui
 import android.content.Context
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +25,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -255,10 +260,11 @@ fun GlassBox(
     val scheme = MaterialTheme.colorScheme
     val haze = LocalHaze.current
     val backdrop = scheme.background
-    val glassTint = scheme.surfaceContainerHigh.copy(alpha = 0.42f)
+    val glassTint = scheme.surfaceContainerHigh.copy(alpha = 0.34f)
     val base = modifier.shadow(if (glass) 0.dp else 8.dp, shape).clip(shape)
     val surface = when {
         glass && haze != null -> base.hazeEffect(state = haze) {
+            blurEnabled = true
             blurRadius = 26.dp
             backgroundColor = backdrop
             tints = listOf(HazeTint(glassTint))
@@ -356,58 +362,59 @@ fun FloatingBar(
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GlassBox(useGlass, pill, Modifier.weight(1f).height(64.dp)) {
-                BoxWithConstraints(Modifier.fillMaxSize().padding(5.dp)) {
-                    // A glass drop slides under the selected tab and settles with a small bounce.
-                    val slot = maxWidth / tabs.size
-                    val index = tabs.indexOfFirst { it.route == route }
-                    val dropX by animateDpAsState(
-                        targetValue = slot * index.coerceAtLeast(0),
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
-                        label = "drop",
-                    )
-                    val dropAlpha by animateFloatAsState(if (index >= 0) 1f else 0f, tween(200), label = "dropAlpha")
-                    Box(
-                        Modifier
-                            .offset(x = dropX)
-                            .width(slot)
-                            .fillMaxHeight()
-                            .alpha(dropAlpha)
-                            .liquidDrop(pill, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f))
-                    )
-                    Row(Modifier.fillMaxSize()) {
-                        tabs.forEach { tab ->
-                            val selected = route == tab.route
-                            val tint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .clip(pill)
-                                    .clickable { onTab(tab.route) },
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                Icon(tab.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = tint)
-                                if (!hideLabels) Text(
-                                    text = stringResource(tab.label),
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    color = tint,
-                                )
-                            }
-                        }
-                    }
+        // One island: the current destination stretches into a labelled pill, the others stay icons.
+        GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(66.dp)) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                tabs.forEach { tab ->
+                    IslandItem(tab.icon, stringResource(tab.label), route == tab.route, !hideLabels, pill) { onTab(tab.route) }
                 }
+                IslandItem(Icons.Rounded.Search, stringResource(R.string.search), route == "search", !hideLabels, pill, onSearch)
             }
-            GlassBox(useGlass, pill, Modifier.size(64.dp)) {
-                IconButton(onClick = onSearch, modifier = Modifier.fillMaxSize()) {
-                    Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.search))
-                }
-            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.IslandItem(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    showLabel: Boolean,
+    shape: Shape,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val fill by animateColorAsState(if (selected) scheme.onSurface else Color.Transparent, tween(260), label = "fill")
+    val tint by animateColorAsState(if (selected) scheme.surface else scheme.onSurfaceVariant, tween(260), label = "tint")
+    Row(
+        modifier = (if (selected) Modifier else Modifier.weight(1f))
+            .height(52.dp)
+            .clip(shape)
+            .background(fill)
+            .clickable(onClickLabel = label, onClick = onClick)
+            .animateContentSize(spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+            .padding(horizontal = if (selected) 18.dp else 0.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, contentDescription = if (selected && showLabel) null else label, modifier = Modifier.size(24.dp), tint = tint)
+        AnimatedVisibility(
+            visible = selected && showLabel,
+            enter = fadeIn(tween(220)) + expandHorizontally(tween(260)),
+            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(200)),
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.padding(start = 8.dp),
+                maxLines = 1,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = tint,
+            )
         }
     }
 }
