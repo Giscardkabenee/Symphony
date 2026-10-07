@@ -546,6 +546,8 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
 @Composable
 fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
+    var equalizer by remember { mutableStateOf(false) }
+    if (equalizer) EqualizerSheet(vm) { equalizer = false }
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = BarSpace)) {
         stickyHeader {
             Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -608,6 +610,19 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.VolumeOff, stringResource(R.string.hide_volume), stringResource(R.string.hide_volume_desc), settings.hideVolume) { vm.setFlag(Flags.HIDE_VOLUME, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.SurroundSound, stringResource(R.string.spatial), stringResource(R.string.spatial_desc), settings.spatial) { vm.setFlag(Flags.SPATIAL, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { equalizer = true }.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Rounded.Tune, contentDescription = null)
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.equalizer), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(if (settings.eqEnabled) R.string.eq_on else R.string.eq_off), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         item { SettingsLabel(stringResource(R.string.appearance)) }

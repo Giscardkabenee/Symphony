@@ -319,6 +319,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun setFullCover(value: Boolean) { viewModelScope.launch { prefs.setFullCover(value) } }
     fun setSyncedLyrics(value: Boolean) { viewModelScope.launch { prefs.setSyncedLyrics(value) } }
     fun setSkipSilence(value: Boolean) { viewModelScope.launch { prefs.setSkipSilence(value) } }
+    fun setEqLevels(levels: List<Int>) { viewModelScope.launch { prefs.setEqLevels(levels) } }
+    fun setEffect(name: String, value: Int) { viewModelScope.launch { prefs.setInt(name, value) } }
     fun setFlag(name: String, value: Boolean) {
         viewModelScope.launch {
             prefs.setFlag(name, value)

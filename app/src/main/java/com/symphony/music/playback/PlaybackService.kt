@@ -6,6 +6,8 @@ import android.content.Intent
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.media.audiofx.BassBoost
+import android.media.audiofx.Equalizer
 import android.media.audiofx.Virtualizer
 import android.provider.MediaStore
 import androidx.media3.common.AudioAttributes
@@ -21,6 +23,7 @@ import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.symphony.music.MainActivity
+import com.symphony.music.data.AppSettings
 import com.symphony.music.data.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +50,9 @@ class PlaybackService : MediaSessionService() {
         }
     }
     private var virtualizer: Virtualizer? = null
+    private var equalizer: Equalizer? = null
+    private var bassBoost: BassBoost? = null
+    private var appliedEffects: List<Int>? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -83,6 +89,9 @@ class PlaybackService : MediaSessionService() {
         } catch (e: Exception) {
             null
         }
+        PlaybackInfo.audioSessionId.value = audioSessionId
+        equalizer = try { Equalizer(0, audioSessionId) } catch (e: Exception) { null }
+        bassBoost = try { BassBoost(0, audioSessionId) } catch (e: Exception) { null }
         val openApp = PendingIntent.getActivity(
             this,
             0,
@@ -99,12 +108,48 @@ class PlaybackService : MediaSessionService() {
                 stopOnClose = it.stopOnClose
                 preferUsb = it.usbDac
                 applyOutputDevice()
-                try {
-                    virtualizer?.enabled = it.spatial
-                } catch (e: Exception) {
-                    // Effect unavailable on this device.
-                }
+                applyEffects(it)
             }
+        }
+    }
+
+    /** Equalizer, bass boost and stereo widening, re-applied only when one of them changed. */
+    private fun applyEffects(settings: AppSettings) {
+        val wanted = listOf(if (settings.eqEnabled) 1 else 0, if (settings.spatial) 1 else 0, settings.bassBoost, settings.virtualizer) + settings.eqLevels
+        if (wanted == appliedEffects) return
+        appliedEffects = wanted
+        try {
+            equalizer?.let { eq ->
+                val range = eq.bandLevelRange
+                val centers = listOf(60, 230, 910, 3600, 14000)
+                for (band in 0 until eq.numberOfBands.toInt()) {
+                    // Each band of the phone follows the nearest of the five bands on screen.
+                    val hz = eq.getCenterFreq(band.toShort()) / 1000
+                    val nearest = centers.indices.minByOrNull { kotlin.math.abs(kotlin.math.ln(centers[it].toDouble()) - kotlin.math.ln(hz.coerceAtLeast(1).toDouble())) } ?: 0
+                    val level = (settings.eqLevels.getOrElse(nearest) { 0 } * 100).coerceIn(range[0].toInt(), range[1].toInt())
+                    eq.setBandLevel(band.toShort(), level.toShort())
+                }
+                eq.enabled = settings.eqEnabled
+            }
+        } catch (e: Exception) {
+            // Equalizer unavailable on this device.
+        }
+        try {
+            bassBoost?.let { bass ->
+                if (bass.strengthSupported) bass.setStrength(settings.bassBoost.toShort())
+                bass.enabled = settings.eqEnabled && settings.bassBoost > 0
+            }
+        } catch (e: Exception) {
+            // Effect unavailable on this device.
+        }
+        try {
+            virtualizer?.let { wide ->
+                val slider = settings.eqEnabled && settings.virtualizer > 0
+                if (wide.strengthSupported) wide.setStrength((if (slider) settings.virtualizer else 1000).toShort())
+                wide.enabled = settings.spatial || slider
+            }
+        } catch (e: Exception) {
+            // Effect unavailable on this device.
         }
     }
 
@@ -148,6 +193,14 @@ class PlaybackService : MediaSessionService() {
             // Already released.
         }
         virtualizer = null
+        try {
+            equalizer?.release()
+            bassBoost?.release()
+        } catch (e: Exception) {
+            // Already released.
+        }
+        equalizer = null
+        bassBoost = null
         session?.run {
             player.release()
             release()

@@ -158,4 +158,11 @@
     <string name="library_summary">%1$d songs · %2$d albums · %3$d artists</string>
     <string name="album_by">Album · %1$s</string>
     <string name="download_running">Downloading episodes</string>
+    <string name="equalizer">Equalizer</string>
+    <string name="eq_reset">Reset</string>
+    <string name="eq_bass">Bass Boost</string>
+    <string name="eq_virtualizer">Virtualizer (3D Audio)</string>
+    <string name="eq_system">Phone audio effects</string>
+    <string name="eq_on">On</string>
+    <string name="eq_off">Off</string>
 </resources>

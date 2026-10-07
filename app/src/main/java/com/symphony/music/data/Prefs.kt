@@ -31,6 +31,9 @@ object Flags {
     const val USB_DAC = "usb_dac"
 }
 
+/** Number of bands the equalizer screen offers. */
+const val EqBands = 5
+
 data class AppSettings(
     /** 0 = system, 1 = light, 2 = dark */
     val theme: Int = 0,
@@ -65,6 +68,12 @@ data class AppSettings(
     val downloads: List<DownloadedEpisode> = emptyList(),
     /** The podcast episode last listened to, offered again on the home screen. */
     val lastEpisode: DownloadedEpisode? = null,
+    val eqEnabled: Boolean = false,
+    /** Gain of each equalizer band, in dB. */
+    val eqLevels: List<Int> = List(EqBands) { 0 },
+    /** Strength of the bass boost and of the stereo widening, 0 to 1000. */
+    val bassBoost: Int = 0,
+    val virtualizer: Int = 0,
 )
 
 class Prefs(context: Context) {
@@ -98,6 +107,11 @@ class Prefs(context: Context) {
             episodePositions = decodePositions(p[EPISODE_POSITIONS]),
             downloads = decodeDownloads(p[DOWNLOADS]),
             lastEpisode = decodeDownloads(p[LAST_EPISODE]).firstOrNull(),
+            eqEnabled = p[booleanPreferencesKey("eq_enabled")] ?: false,
+            eqLevels = (p[stringPreferencesKey("eq_levels")] ?: "").split(',').mapNotNull { it.toIntOrNull() }
+                .let { list -> List(EqBands) { i -> (list.getOrNull(i) ?: 0).coerceIn(-12, 12) } },
+            bassBoost = (p[intPreferencesKey("bass_boost")] ?: 0).coerceIn(0, 1000),
+            virtualizer = (p[intPreferencesKey("virtualizer")] ?: 0).coerceIn(0, 1000),
         )
     }
 
@@ -106,6 +120,10 @@ class Prefs(context: Context) {
     suspend fun setFullCover(value: Boolean) { store.edit { it[FULL_COVER] = value } }
     suspend fun setSyncedLyrics(value: Boolean) { store.edit { it[SYNCED] = value } }
     suspend fun setSkipSilence(value: Boolean) { store.edit { it[SKIP_SILENCE] = value } }
+
+    suspend fun setEqLevels(levels: List<Int>) { store.edit { it[stringPreferencesKey("eq_levels")] = levels.joinToString(",") } }
+
+    suspend fun setInt(name: String, value: Int) { store.edit { it[intPreferencesKey(name)] = value } }
 
     suspend fun setFlag(name: String, value: Boolean) { store.edit { it[booleanPreferencesKey(name)] = value } }
 

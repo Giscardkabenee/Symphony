@@ -9,4 +9,7 @@ object PlaybackInfo {
 
     /** Whether the running player was started with 32-bit float output. */
     val floatOutput = MutableStateFlow(false)
+
+    /** Audio session of the running player, for the phone's own effects panel. */
+    val audioSessionId = MutableStateFlow(0)
 }
