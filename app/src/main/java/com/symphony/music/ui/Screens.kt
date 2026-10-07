@@ -80,12 +80,17 @@ const val MOST_KEY = "__most__"
 private val BarSpace = 210.dp
 
 @Composable
-private fun ScreenTitle(text: String, action: @Composable () -> Unit = {}) {
+private fun ScreenTitle(text: String, subtitle: String? = null, action: @Composable () -> Unit = {}) {
     Row(
         modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(text, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         action()
     }
 }
@@ -138,7 +143,7 @@ fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onStack: (String) ->
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         // The title stays in place while the list scrolls under it.
         stickyHeader {
-            ScreenTitle(stringResource(R.string.app_name)) {
+            ScreenTitle(stringResource(R.string.app_name), stringResource(R.string.songs_count, songs.size)) {
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
                 }
@@ -219,7 +224,7 @@ fun AlbumsScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.offset(x = (-20).dp)) { ScreenTitle(stringResource(R.string.tab_albums)) }
+            Box(Modifier.offset(x = (-20).dp)) { ScreenTitle(stringResource(R.string.tab_albums), stringResource(R.string.albums_count, albums.size)) }
         }
         if (albums.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { EmptyState(stringResource(R.string.empty_library)) }
@@ -242,7 +247,7 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.offset(x = (-20).dp)) { ScreenTitle(stringResource(R.string.tab_artists)) }
+            Box(Modifier.offset(x = (-20).dp)) { ScreenTitle(stringResource(R.string.tab_artists), stringResource(R.string.artists_count, artists.size)) }
         }
         if (artists.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { EmptyState(stringResource(R.string.empty_library)) }
@@ -287,7 +292,7 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         stickyHeader {
-            ScreenTitle(stringResource(R.string.tab_library)) {
+            ScreenTitle(stringResource(R.string.tab_library), stringResource(R.string.playlists_count, settings.playlists.size + 1)) {
                 IconButton(onClick = { creating = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.new_playlist))
                 }

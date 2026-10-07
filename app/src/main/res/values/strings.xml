@@ -106,4 +106,6 @@
     <string name="quality_high">Haute qualité</string>
     <string name="quality_standard">Qualité standard</string>
     <string name="most_played">Les plus écoutés</string>
+    <string name="artists_count">%1$d artistes</string>
+    <string name="playlists_count">%1$d playlists</string>
 </resources>
