@@ -48,6 +48,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -70,6 +72,9 @@ import com.symphony.music.playback.PlaybackInfo
 
 /** Route argument that stands for the built-in Favourites list. */
 const val FAVORITES_KEY = "__favorites__"
+const val RECENT_KEY = "__recent__"
+const val ADDED_KEY = "__added__"
+const val MOST_KEY = "__most__"
 
 /** Room left at the bottom of every list for the floating bar. */
 private val BarSpace = 210.dp
@@ -122,16 +127,13 @@ private fun AlbumCard(album: AlbumInfo, modifier: Modifier = Modifier, onClick: 
 // ---------------------------------------------------------------- Home
 
 @Composable
-fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onAlbum: (Long) -> Unit, onMore: (Song) -> Unit) {
+fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onStack: (String) -> Unit, onMore: (Song) -> Unit) {
     val songs by vm.songs.collectAsStateWithLifecycle()
-    val albums by vm.albums.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
-    val recentAlbums = remember(settings.recents, albums) {
-        val byId = albums.associateBy { it.id }
-        vm.songsFor(settings.recents).map { it.albumId }.distinct().mapNotNull { byId[it] }.take(10)
-    }
-    val added = songs
+    val recent = remember(settings.recents, songs) { vm.songsFor(settings.recents) }
+    val added = remember(songs) { songs.sortedByDescending { it.dateAdded }.take(50) }
+    val most = remember(settings.playCounts, songs) { vm.songsFor(mostPlayedIds(settings.playCounts)) }
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item {
@@ -143,25 +145,64 @@ fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onAlbum: (Long) -> U
         }
         if (songs.isEmpty()) {
             item { EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint)) }
-        }
-        if (recentAlbums.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.recently_played)) }
+        } else {
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    items(recentAlbums.size) { i ->
-                        val album = recentAlbums[i]
-                        AlbumCard(album, Modifier.width(140.dp)) { onAlbum(album.id) }
-                    }
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { StackCard(stringResource(R.string.recently_played), recent) { onStack(RECENT_KEY) } }
+                    item { StackCard(stringResource(R.string.recently_added), added) { onStack(ADDED_KEY) } }
+                    item { StackCard(stringResource(R.string.most_played), most) { onStack(MOST_KEY) } }
                 }
             }
-        }
-        if (added.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.all_songs)) }
-            items(added.size) { i ->
-                val song = added[i]
-                SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(added, i) }
+            items(songs.size) { i ->
+                val song = songs[i]
+                SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(songs, i) }
             }
         }
+    }
+}
+
+/** The fifty most started songs, most played first. */
+private fun mostPlayedIds(counts: Map<Long, Int>): List<Long> =
+    counts.entries.sortedByDescending { it.value }.take(50).map { it.key }
+
+/** A collection shown as a small pile: the newest cover in front, two more peeking out behind it. */
+@Composable
+private fun StackCard(title: String, songs: List<Song>, onClick: () -> Unit) {
+    val covers = remember(songs) { songs.distinctBy { it.albumId }.take(3) }
+    Column(
+        modifier = Modifier
+            .width(156.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(6.dp),
+    ) {
+        Box(Modifier.fillMaxWidth().height(166.dp)) {
+            StackLayer(covers.getOrNull(2), Modifier.align(Alignment.TopCenter).fillMaxWidth(0.72f).height(70.dp), 0.5f)
+            StackLayer(covers.getOrNull(1), Modifier.align(Alignment.TopCenter).padding(top = 11.dp).fillMaxWidth(0.86f).height(80.dp), 0.78f)
+            StackLayer(
+                covers.getOrNull(0),
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(144.dp).shadow(12.dp, RoundedCornerShape(18.dp)),
+                1f,
+                RoundedCornerShape(18.dp),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = stringResource(R.string.songs_count, songs.size),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun StackLayer(song: Song?, modifier: Modifier, opacity: Float, shape: RoundedCornerShape = RoundedCornerShape(14.dp)) {
+    if (song != null) {
+        Artwork(song.albumId, song.album, modifier.graphicsLayer { alpha = opacity }, shape)
+    } else {
+        Box(modifier.graphicsLayer { alpha = opacity }.clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHighest))
     }
 }
 
@@ -574,9 +615,24 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     val allSongs by vm.songs.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val isFavorites = name == FAVORITES_KEY
-    val ids = if (isFavorites) settings.favorites else settings.playlists[name] ?: emptyList()
-    val songs = remember(ids, allSongs) { vm.songsFor(ids) }
-    val title = if (isFavorites) stringResource(R.string.favorites) else name
+    // Lists the app builds by itself; nothing can be removed from them by hand.
+    val smart = name == RECENT_KEY || name == ADDED_KEY || name == MOST_KEY
+    val songs = remember(name, settings, allSongs) {
+        when (name) {
+            RECENT_KEY -> vm.songsFor(settings.recents)
+            ADDED_KEY -> allSongs.sortedByDescending { it.dateAdded }.take(50)
+            MOST_KEY -> vm.songsFor(mostPlayedIds(settings.playCounts))
+            FAVORITES_KEY -> vm.songsFor(settings.favorites)
+            else -> vm.songsFor(settings.playlists[name] ?: emptyList())
+        }
+    }
+    val title = when (name) {
+        RECENT_KEY -> stringResource(R.string.recently_played)
+        ADDED_KEY -> stringResource(R.string.recently_added)
+        MOST_KEY -> stringResource(R.string.most_played)
+        FAVORITES_KEY -> stringResource(R.string.favorites)
+        else -> name
+    }
     val minutes = songs.sumOf { it.duration } / 60_000
     val subtitle = stringResource(R.string.songs_count, songs.size) + " · " + minutes + " min"
 
@@ -586,7 +642,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
                 onPlay = { vm.play(songs, 0) },
                 onShuffle = { vm.play(songs, 0, shuffle = true) },
                 action = {
-                    if (!isFavorites) {
+                    if (!isFavorites && !smart) {
                         FilledTonalIconButton(onClick = { vm.deletePlaylist(name); onBack() }) {
                             Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.delete_playlist))
                         }
@@ -602,7 +658,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
                 Box(Modifier.weight(1f)) {
                     SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(songs, i) }
                 }
-                IconButton(onClick = { if (isFavorites) vm.toggleFavorite(song.id) else vm.removeFromPlaylist(name, song.id) }) {
+                if (!smart) IconButton(onClick = { if (isFavorites) vm.toggleFavorite(song.id) else vm.removeFromPlaylist(name, song.id) }) {
                     Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.remove), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

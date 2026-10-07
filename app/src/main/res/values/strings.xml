@@ -105,4 +105,5 @@
     <string name="quality_lossless">Sans perte</string>
     <string name="quality_high">Haute qualité</string>
     <string name="quality_standard">Qualité standard</string>
+    <string name="most_played">Les plus écoutés</string>
 </resources>

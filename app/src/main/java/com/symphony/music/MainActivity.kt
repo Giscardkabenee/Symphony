@@ -174,7 +174,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
 
     Box(Modifier.fillMaxSize()) {
         NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
-            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openAlbum, openMenu) }
+            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openMenu) }
             composable("albums") { AlbumsScreen(vm, openAlbum) }
             composable("artists") { ArtistsScreen(vm, openArtist) }
             composable("library") { LibraryScreen(vm, openPlaylist, openMenu) }

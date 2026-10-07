@@ -52,6 +52,8 @@ data class AppSettings(
     val usbDac: Boolean = false,
     val favorites: List<Long> = emptyList(),
     val recents: List<Long> = emptyList(),
+    /** Song id to number of times it was started. */
+    val playCounts: Map<Long, Int> = emptyMap(),
     val playlists: Map<String, List<Long>> = emptyMap(),
 )
 
@@ -79,6 +81,7 @@ class Prefs(context: Context) {
             usbDac = p[booleanPreferencesKey(Flags.USB_DAC)] ?: false,
             favorites = decodeIds(p[FAVORITES]),
             recents = decodeIds(p[RECENTS]),
+            playCounts = decodeCounts(p[PLAY_COUNTS]),
             playlists = decodePlaylists(p[PLAYLISTS]),
         )
     }
@@ -102,6 +105,9 @@ class Prefs(context: Context) {
         store.edit { p ->
             val ids = decodeIds(p[RECENTS])
             p[RECENTS] = encodeIds((listOf(id) + (ids - id)).take(50))
+            val counts = decodeCounts(p[PLAY_COUNTS]).toMutableMap()
+            counts[id] = (counts[id] ?: 0) + 1
+            p[PLAY_COUNTS] = counts.entries.joinToString(",") { "${it.key}:${it.value}" }
         }
     }
 
@@ -136,10 +142,22 @@ class Prefs(context: Context) {
         val SKIP_SILENCE = booleanPreferencesKey("skip_silence")
         val FAVORITES = stringPreferencesKey("favorites")
         val RECENTS = stringPreferencesKey("recents")
+        val PLAY_COUNTS = stringPreferencesKey("play_counts")
         val PLAYLISTS = stringPreferencesKey("playlists")
 
         fun decodeIds(raw: String?): List<Long> =
             raw?.split(',')?.mapNotNull { it.trim().toLongOrNull() } ?: emptyList()
+
+        fun decodeCounts(raw: String?): Map<Long, Int> {
+            if (raw.isNullOrBlank()) return emptyMap()
+            val out = HashMap<Long, Int>()
+            for (part in raw.split(',')) {
+                val id = part.substringBefore(':').toLongOrNull() ?: continue
+                val count = part.substringAfter(':', "").toIntOrNull() ?: continue
+                out[id] = count
+            }
+            return out
+        }
 
         fun encodeIds(ids: List<Long>): String = ids.joinToString(",")
 
