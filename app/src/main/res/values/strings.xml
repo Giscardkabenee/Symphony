@@ -92,4 +92,10 @@
     <string name="seek">Position dans le titre</string>
     <string name="online_lyrics">Paroles en ligne</string>
     <string name="online_lyrics_desc">Cherche les paroles sur LRCLIB quand le fichier n\'en contient pas. Le titre et l\'artiste sont envoyés à lrclib.net</string>
+    <string name="output_precision">Précision de sortie</string>
+    <string name="restart_needed">Fermez complètement Symphony puis rouvrez-la pour appliquer ce choix</string>
+    <string name="usb_dac">Préférer le DAC USB</string>
+    <string name="usb_dac_desc">Envoie le son vers un DAC ou un casque USB quand il est branché</string>
+    <string name="artist_photos">Photos des artistes</string>
+    <string name="artist_photos_desc">Cherche la photo sur Deezer. Le nom de l\'artiste est envoyé à deezer.com</string>
 </resources>

@@ -44,6 +44,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +55,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +68,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import com.symphony.music.PlayerState
 import com.symphony.music.R
+import com.symphony.music.data.ArtistImages
 import com.symphony.music.data.Song
 import com.symphony.music.data.artworkUri
 import kotlinx.coroutines.Dispatchers
@@ -118,6 +121,31 @@ fun Artwork(
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize(),
         )
+    }
+}
+
+/** Artist photo found online, over a coloured initial while loading or when none exists. */
+@Composable
+fun ArtistAvatar(name: String, online: Boolean, modifier: Modifier = Modifier, shape: Shape = CircleShape) {
+    val context = LocalContext.current
+    val url by produceState<String?>(null, name, online) {
+        value = if (online) ArtistImages.find(context, name) else null
+    }
+    Box(modifier.clip(shape).background(colorFor(name)), contentAlignment = Alignment.Center) {
+        Text(
+            text = name.take(1).uppercase(),
+            color = Color.White,
+            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.titleLarge,
+        )
+        if (url != null) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
     }
 }
 

@@ -26,6 +26,9 @@ object Flags {
     const val STOP_ON_CLOSE = "stop_on_close"
     const val SPATIAL = "spatial_audio"
     const val ONLINE_LYRICS = "online_lyrics"
+    const val ARTIST_PHOTOS = "artist_photos"
+    const val FLOAT_OUTPUT = "float_output"
+    const val USB_DAC = "usb_dac"
 }
 
 data class AppSettings(
@@ -44,6 +47,9 @@ data class AppSettings(
     val stopOnClose: Boolean = false,
     val spatial: Boolean = false,
     val onlineLyrics: Boolean = true,
+    val artistPhotos: Boolean = true,
+    val floatOutput: Boolean = false,
+    val usbDac: Boolean = false,
     val favorites: List<Long> = emptyList(),
     val recents: List<Long> = emptyList(),
     val playlists: Map<String, List<Long>> = emptyMap(),
@@ -68,6 +74,9 @@ class Prefs(context: Context) {
             stopOnClose = p[booleanPreferencesKey(Flags.STOP_ON_CLOSE)] ?: false,
             spatial = p[booleanPreferencesKey(Flags.SPATIAL)] ?: false,
             onlineLyrics = p[booleanPreferencesKey(Flags.ONLINE_LYRICS)] ?: true,
+            artistPhotos = p[booleanPreferencesKey(Flags.ARTIST_PHOTOS)] ?: true,
+            floatOutput = p[booleanPreferencesKey(Flags.FLOAT_OUTPUT)] ?: false,
+            usbDac = p[booleanPreferencesKey(Flags.USB_DAC)] ?: false,
             favorites = decodeIds(p[FAVORITES]),
             recents = decodeIds(p[RECENTS]),
             playlists = decodePlaylists(p[PLAYLISTS]),

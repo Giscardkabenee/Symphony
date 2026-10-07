@@ -1,5 +1,6 @@
 package com.symphony.music.ui
 
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -30,6 +32,8 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.SurroundSound
 import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Public
@@ -62,6 +66,7 @@ import com.symphony.music.data.Song
 import com.symphony.music.data.UpdateUi
 import com.symphony.music.data.Updater
 import com.symphony.music.data.artworkUri
+import com.symphony.music.playback.PlaybackInfo
 
 /** Route argument that stands for the built-in Favourites list. */
 const val FAVORITES_KEY = "__favorites__"
@@ -187,6 +192,7 @@ fun AlbumsScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit) {
 @Composable
 fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
     val artists by vm.artists.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item { ScreenTitle(stringResource(R.string.tab_artists)) }
         if (artists.isEmpty()) {
@@ -198,9 +204,7 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth().clickable { onArtist(artist.name) }.padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(56.dp).clip(CircleShape).background(colorFor(artist.name)), contentAlignment = Alignment.Center) {
-                    Text(artist.name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
-                }
+                ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(56.dp))
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
@@ -318,6 +322,7 @@ fun SearchScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit, onArtist: (String
     val albums by vm.albums.collectAsStateWithLifecycle()
     val artists by vm.artists.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
+    val settings by vm.settings.collectAsStateWithLifecycle()
     val q = query.trim()
     val foundSongs = remember(q, songs) {
         if (q.isEmpty()) emptyList() else songs.filter { it.title.contains(q, true) || it.artist.contains(q, true) }.take(30)
@@ -390,9 +395,7 @@ fun SearchScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit, onArtist: (String
                     modifier = Modifier.fillMaxWidth().clickable { onArtist(artist.name) }.padding(horizontal = 20.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(56.dp).clip(CircleShape).background(colorFor(artist.name)), contentAlignment = Alignment.Center) {
-                        Text(artist.name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.ExtraBold)
-                    }
+                    ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(56.dp))
                     Spacer(Modifier.width(14.dp))
                     Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -413,6 +416,7 @@ private fun DetailHeader(
     onBack: () -> Unit,
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
+    artistPhotos: Boolean = false,
     action: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -438,9 +442,7 @@ private fun DetailHeader(
         if (albumId != null) {
             Artwork(albumId, label, Modifier.size(210.dp), RoundedCornerShape(16.dp))
         } else {
-            Box(Modifier.size(160.dp).clip(CircleShape).background(fallback), contentAlignment = Alignment.Center) {
-                Text(label.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.displayMedium)
-            }
+            ArtistAvatar(label, artistPhotos, Modifier.size(190.dp))
         }
         Spacer(Modifier.height(16.dp))
         Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -519,6 +521,7 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
     val artists by vm.artists.collectAsStateWithLifecycle()
     val albums by vm.albums.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
     val artist = artists.firstOrNull { it.name == name }
     if (artist == null) {
         Column { ScreenTitle(""); EmptyState(stringResource(R.string.empty_list)) }
@@ -529,7 +532,7 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
     val subtitle = stringResource(R.string.albums_count, artist.albumCount) + " · " + stringResource(R.string.songs_count, artist.songs.size)
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item {
-            DetailHeader(artist.name, subtitle, null, artist.name, onBack,
+            DetailHeader(artist.name, subtitle, null, artist.name, onBack, artistPhotos = settings.artistPhotos,
                 onPlay = { vm.play(artist.songs, 0) },
                 onShuffle = { vm.play(artist.songs, 0, shuffle = true) })
         }
@@ -611,6 +614,47 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
         item { SettingsLabel(stringResource(R.string.playback)) }
         item {
             SettingsCard {
+                Column(Modifier.padding(16.dp)) {
+                    val rate by PlaybackInfo.sampleRate.collectAsStateWithLifecycle()
+                    val runningFloat by PlaybackInfo.floatOutput.collectAsStateWithLifecycle()
+                    val info = buildString {
+                        append("AudioTrack · ").append(Build.MODEL)
+                        if (rate > 0) append(" · ").append("%.1f kHz".format(rate / 1000f))
+                        append(" · ").append(if (runningFloat) "32-bit float" else "16-bit PCM")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Tune, contentDescription = null)
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text(stringResource(R.string.output_precision), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                            Text(info, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = !settings.floatOutput,
+                            onClick = { vm.setFlag(Flags.FLOAT_OUTPUT, false) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) {
+                            Text("16-bit PCM")
+                        }
+                        SegmentedButton(
+                            selected = settings.floatOutput,
+                            onClick = { vm.setFlag(Flags.FLOAT_OUTPUT, true) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) {
+                            Text("32-bit float")
+                        }
+                    }
+                    if (settings.floatOutput != runningFloat) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(R.string.restart_needed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.Usb, stringResource(R.string.usb_dac), stringResource(R.string.usb_dac_desc), settings.usbDac) { vm.setFlag(Flags.USB_DAC, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.GraphicEq, stringResource(R.string.skip_silence), stringResource(R.string.skip_silence_desc), settings.skipSilence) { vm.setSkipSilence(it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.FastForward, stringResource(R.string.double_tap), stringResource(R.string.double_tap_desc), settings.doubleTapSeek) { vm.setFlag(Flags.DOUBLE_TAP, it) }
@@ -653,6 +697,8 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.Lyrics, stringResource(R.string.synced_lyrics), stringResource(R.string.synced_lyrics_desc), settings.syncedLyrics) { vm.setSyncedLyrics(it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.Public, stringResource(R.string.online_lyrics), stringResource(R.string.online_lyrics_desc), settings.onlineLyrics) { vm.setFlag(Flags.ONLINE_LYRICS, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.AccountCircle, stringResource(R.string.artist_photos), stringResource(R.string.artist_photos_desc), settings.artistPhotos) { vm.setFlag(Flags.ARTIST_PHOTOS, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.BlurOn, stringResource(R.string.blur_lyrics), stringResource(R.string.blur_lyrics_desc), settings.blurLyrics) { vm.setFlag(Flags.BLUR_LYRICS, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))

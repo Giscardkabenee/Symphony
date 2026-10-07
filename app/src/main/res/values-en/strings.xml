@@ -91,4 +91,10 @@
     <string name="seek">Position in the song</string>
     <string name="online_lyrics">Online lyrics</string>
     <string name="online_lyrics_desc">Looks up lyrics on LRCLIB when the file has none. The title and artist are sent to lrclib.net</string>
+    <string name="output_precision">Output precision</string>
+    <string name="restart_needed">Fully close Symphony and reopen it to apply this choice</string>
+    <string name="usb_dac">Prefer USB DAC</string>
+    <string name="usb_dac_desc">Routes sound to a USB DAC or USB headset when one is plugged in</string>
+    <string name="artist_photos">Artist photos</string>
+    <string name="artist_photos_desc">Looks up the photo on Deezer. The artist name is sent to deezer.com</string>
 </resources>
