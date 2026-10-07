@@ -1,6 +1,13 @@
 package com.symphony.music.ui
 
 import android.content.Context
+import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -435,12 +442,28 @@ private fun RowScope.IslandItem(
     val scheme = MaterialTheme.colorScheme
     val fill by animateColorAsState(if (selected) scheme.onSurface else Color.Transparent, tween(260), label = "fill")
     val tint by animateColorAsState(if (selected) scheme.surface else scheme.onSurfaceVariant, tween(260), label = "tint")
+    // Physical feel: the item sinks under the finger, springs back, and the phone gives a short tick.
+    val view = LocalView.current
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val press by animateFloatAsState(
+        targetValue = if (pressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium),
+        label = "press",
+    )
     Row(
         modifier = (if (selected) Modifier else Modifier.weight(1f))
             .height(52.dp)
+            .graphicsLayer {
+                scaleX = press
+                scaleY = press
+            }
             .clip(shape)
             .background(fill)
-            .clickable(onClickLabel = label, onClick = onClick)
+            .clickable(interactionSource = source, indication = LocalIndication.current, onClickLabel = label) {
+                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                onClick()
+            }
             .animateContentSize(spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
             .padding(horizontal = if (selected) 18.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically,
