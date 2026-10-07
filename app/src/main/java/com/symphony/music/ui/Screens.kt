@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.SurroundSound
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
@@ -650,6 +651,8 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.Fullscreen, stringResource(R.string.full_cover), stringResource(R.string.full_cover_desc), settings.fullCover) { vm.setFullCover(it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.Lyrics, stringResource(R.string.synced_lyrics), stringResource(R.string.synced_lyrics_desc), settings.syncedLyrics) { vm.setSyncedLyrics(it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.Public, stringResource(R.string.online_lyrics), stringResource(R.string.online_lyrics_desc), settings.onlineLyrics) { vm.setFlag(Flags.ONLINE_LYRICS, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.BlurOn, stringResource(R.string.blur_lyrics), stringResource(R.string.blur_lyrics_desc), settings.blurLyrics) { vm.setFlag(Flags.BLUR_LYRICS, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))

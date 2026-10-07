@@ -7,6 +7,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -17,6 +18,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -61,6 +63,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -337,11 +344,6 @@ private fun Controls(
     onMore: () -> Unit,
     onArtist: () -> Unit,
 ) {
-    val sliderColors = SliderDefaults.colors(
-        thumbColor = Color.White,
-        activeTrackColor = Color.White,
-        inactiveTrackColor = Color.White.copy(alpha = 0.24f),
-    )
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 28.dp, end = 28.dp, top = 8.dp, bottom = 16.dp)) {
         if (mode != MODE_QUEUE) Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -379,15 +381,15 @@ private fun Controls(
         var dragging by remember { mutableStateOf<Float?>(null) }
         val duration = state.duration.coerceAtLeast(1L).toFloat()
         val shown = dragging ?: state.position.toFloat().coerceIn(0f, duration)
-        Slider(
+        ThinSlider(
             value = shown,
-            onValueChange = { dragging = it },
-            onValueChangeFinished = {
+            max = duration,
+            label = stringResource(R.string.seek),
+            onChange = { dragging = it },
+            onFinished = {
                 dragging?.let { vm.seekTo(it.toLong()) }
                 dragging = null
             },
-            valueRange = 0f..duration,
-            colors = sliderColors,
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatTime(shown.toLong()), style = MaterialTheme.typography.labelMedium, color = Soft)
@@ -429,15 +431,15 @@ private fun Controls(
         val volumeLabel = stringResource(R.string.volume)
         if (showVolume) Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.VolumeDown, contentDescription = null, tint = Soft, modifier = Modifier.size(20.dp))
-            Slider(
+            ThinSlider(
                 value = volume,
-                onValueChange = {
+                max = maxVolume.toFloat(),
+                label = volumeLabel,
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+                onChange = {
                     volume = it
                     audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.roundToInt(), 0)
                 },
-                valueRange = 0f..maxVolume.toFloat(),
-                colors = sliderColors,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             )
             Icon(Icons.Rounded.VolumeUp, contentDescription = volumeLabel, tint = Soft, modifier = Modifier.size(20.dp))
         }
@@ -458,6 +460,63 @@ private fun Controls(
                 ToggleIcon(Icons.Rounded.Lyrics, stringResource(R.string.lyrics), mode == MODE_LYRICS) { onMode(MODE_LYRICS) }
             }
             ToggleIcon(Icons.Rounded.QueueMusic, stringResource(R.string.queue), mode == MODE_QUEUE) { onMode(MODE_QUEUE) }
+        }
+    }
+}
+
+/** Thin bar without a thumb; it thickens while a finger drags it. */
+@Composable
+private fun ThinSlider(
+    value: Float,
+    max: Float,
+    label: String,
+    modifier: Modifier = Modifier,
+    onFinished: () -> Unit = {},
+    onChange: (Float) -> Unit,
+) {
+    var active by remember { mutableStateOf(false) }
+    val thickness by animateDpAsState(if (active) 10.dp else 5.dp, label = "thickness")
+    val fraction = if (max > 0f) (value / max).coerceIn(0f, 1f) else 0f
+    val change by rememberUpdatedState(onChange)
+    val finished by rememberUpdatedState(onFinished)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .semantics {
+                contentDescription = label
+                progressBarRangeInfo = ProgressBarRangeInfo(value, 0f..max)
+                setProgress { target ->
+                    change(target.coerceIn(0f, max))
+                    finished()
+                    true
+                }
+            }
+            .pointerInput(max) {
+                detectTapGestures { offset ->
+                    change((offset.x / size.width).coerceIn(0f, 1f) * max)
+                    finished()
+                }
+            }
+            .pointerInput(max) {
+                detectHorizontalDragGestures(
+                    onDragStart = { active = true },
+                    onDragEnd = {
+                        active = false
+                        finished()
+                    },
+                    onDragCancel = {
+                        active = false
+                        finished()
+                    },
+                ) { input, _ ->
+                    change((input.position.x / size.width).coerceIn(0f, 1f) * max)
+                }
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(Modifier.fillMaxWidth().height(thickness).clip(CircleShape).background(Color.White.copy(alpha = 0.24f))) {
+            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Color.White))
         }
     }
 }

@@ -24,6 +24,7 @@ import com.symphony.music.data.Updater
 import com.symphony.music.data.buildAlbums
 import com.symphony.music.data.buildArtists
 import com.symphony.music.data.loadLyrics
+import com.symphony.music.data.loadOnlineLyrics
 import com.symphony.music.playback.PlaybackService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -160,7 +161,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (song == null) return
         lyricsJob = viewModelScope.launch {
             prefs.addRecent(song.id)
-            _lyrics.value = loadLyrics(getApplication(), song)
+            val local = loadLyrics(getApplication(), song)
+            _lyrics.value = local
+            if (local == null && prefs.flow.first().onlineLyrics) {
+                _lyrics.value = loadOnlineLyrics(getApplication(), song)
+            }
         }
     }
 

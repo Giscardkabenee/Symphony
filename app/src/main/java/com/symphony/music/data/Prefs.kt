@@ -25,6 +25,7 @@ object Flags {
     const val FILTER_SHORT = "filter_short"
     const val STOP_ON_CLOSE = "stop_on_close"
     const val SPATIAL = "spatial_audio"
+    const val ONLINE_LYRICS = "online_lyrics"
 }
 
 data class AppSettings(
@@ -42,6 +43,7 @@ data class AppSettings(
     val filterShort: Boolean = true,
     val stopOnClose: Boolean = false,
     val spatial: Boolean = false,
+    val onlineLyrics: Boolean = true,
     val favorites: List<Long> = emptyList(),
     val recents: List<Long> = emptyList(),
     val playlists: Map<String, List<Long>> = emptyMap(),
@@ -65,6 +67,7 @@ class Prefs(context: Context) {
             filterShort = p[booleanPreferencesKey(Flags.FILTER_SHORT)] ?: true,
             stopOnClose = p[booleanPreferencesKey(Flags.STOP_ON_CLOSE)] ?: false,
             spatial = p[booleanPreferencesKey(Flags.SPATIAL)] ?: false,
+            onlineLyrics = p[booleanPreferencesKey(Flags.ONLINE_LYRICS)] ?: true,
             favorites = decodeIds(p[FAVORITES]),
             recents = decodeIds(p[RECENTS]),
             playlists = decodePlaylists(p[PLAYLISTS]),
