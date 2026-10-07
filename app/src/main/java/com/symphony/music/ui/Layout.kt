@@ -113,12 +113,12 @@ fun HomeScreen(
         val resume = current ?: episode?.let { it.episode.toSong(it.podcast) } ?: recent.firstOrNull()
         if (resume != null) {
             val position = episode?.let { settings.episodePositions[it.episode.id] } ?: 0L
-            val detail = when {
-                episode != null && position > 0 -> stringResource(R.string.podcast) + " · " + stringResource(R.string.podcast_resume, formatTime(position))
-                episode != null -> stringResource(R.string.podcast) + " · " + resume.artist
-                else -> resume.artist
-            }
             item {
+                val detail = when {
+                    episode != null && position > 0 -> stringResource(R.string.podcast) + " · " + stringResource(R.string.podcast_resume, formatTime(position))
+                    episode != null -> stringResource(R.string.podcast) + " · " + resume.artist
+                    else -> resume.artist
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
