@@ -93,6 +93,8 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
     val state by vm.state.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val lyrics by vm.lyrics.collectAsStateWithLifecycle()
+    val lyricsStatus by vm.lyricsStatus.collectAsStateWithLifecycle()
+    val lyricsError by vm.lyricsError.collectAsStateWithLifecycle()
     val song = state.current
     if (song == null) {
         LaunchedEffect(Unit) { onClose() }
@@ -133,7 +135,7 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     Crossfade(targetState = mode, animationSpec = tween(320), modifier = Modifier.fillMaxSize(), label = "mode") { shown ->
                         when (shown) {
                             MODE_QUEUE -> QueueList(state, vm, onMore)
-                            MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics) { vm.seekTo(it) }
+                            MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics, lyricsStatus, lyricsError, { vm.retryLyrics() }) { vm.seekTo(it) }
                             else -> Crossfade(targetState = song, animationSpec = tween(520), modifier = Modifier.fillMaxSize(), label = "song") { s ->
                                 Cover(s, settings.fullCover, coverScale, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
                             }
@@ -295,10 +297,41 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) ->
 }
 
 @Composable
-private fun LyricsView(lyrics: LyricsData?, activeLine: Int, highlight: Boolean, blurOthers: Boolean, onSeek: (Long) -> Unit) {
+private fun LyricsView(
+    lyrics: LyricsData?,
+    activeLine: Int,
+    highlight: Boolean,
+    blurOthers: Boolean,
+    status: Int,
+    error: String,
+    onRetry: () -> Unit,
+    onSeek: (Long) -> Unit,
+) {
     if (lyrics == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(stringResource(R.string.no_lyrics), color = Soft)
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            if (status == 1 || status == 0) {
+                CircularProgressIndicator(color = Color.White)
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.lyrics_searching), color = Soft)
+            } else {
+                Text(
+                    text = if (status == 4) stringResource(R.string.lyrics_error) else stringResource(R.string.no_lyrics),
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (status == 4 && error.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(error, color = Soft, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(16.dp))
+                TextButton(onClick = onRetry) {
+                    Text(stringResource(R.string.retry), color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
         }
         return
     }
@@ -456,9 +489,7 @@ private fun Controls(
                 label = stringResource(R.string.favorite),
                 active = favorite,
             ) { vm.toggleFavorite(song.id) }
-            if (hasLyrics) {
-                ToggleIcon(Icons.Rounded.Lyrics, stringResource(R.string.lyrics), mode == MODE_LYRICS) { onMode(MODE_LYRICS) }
-            }
+            ToggleIcon(Icons.Rounded.Lyrics, stringResource(R.string.lyrics), mode == MODE_LYRICS) { onMode(MODE_LYRICS) }
             ToggleIcon(Icons.Rounded.QueueMusic, stringResource(R.string.queue), mode == MODE_QUEUE) { onMode(MODE_QUEUE) }
         }
     }

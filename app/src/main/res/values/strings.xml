@@ -98,4 +98,7 @@
     <string name="usb_dac_desc">Envoie le son vers un DAC ou un casque USB quand il est branché</string>
     <string name="artist_photos">Photos des artistes</string>
     <string name="artist_photos_desc">Cherche la photo sur Deezer. Le nom de l\'artiste est envoyé à deezer.com</string>
+    <string name="lyrics_searching">Recherche des paroles…</string>
+    <string name="lyrics_error">La recherche des paroles a échoué</string>
+    <string name="retry">Réessayer</string>
 </resources>

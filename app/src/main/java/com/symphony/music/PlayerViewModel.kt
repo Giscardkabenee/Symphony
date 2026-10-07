@@ -83,6 +83,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var lyricsJob: Job? = null
 
+    /** 0 = nothing to show, 1 = searching, 2 = found, 3 = none found, 4 = search failed. */
+    private val _lyricsStatus = MutableStateFlow(0)
+    val lyricsStatus: StateFlow<Int> = _lyricsStatus.asStateFlow()
+    private val _lyricsError = MutableStateFlow("")
+    val lyricsError: StateFlow<String> = _lyricsError.asStateFlow()
+
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             sync()
@@ -158,13 +164,26 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private fun onSongChanged(song: Song?) {
         lyricsJob?.cancel()
         _lyrics.value = null
+        _lyricsStatus.value = 0
         if (song == null) return
         lyricsJob = viewModelScope.launch {
             prefs.addRecent(song.id)
+            _lyricsStatus.value = 1
             val local = loadLyrics(getApplication(), song)
-            _lyrics.value = local
-            if (local == null && prefs.flow.first().onlineLyrics) {
-                _lyrics.value = loadOnlineLyrics(getApplication(), song)
+            if (local != null) {
+                _lyrics.value = local
+                _lyricsStatus.value = 2
+            } else if (prefs.flow.first().onlineLyrics) {
+                val result = loadOnlineLyrics(getApplication(), song)
+                _lyrics.value = result.data
+                _lyricsError.value = result.error ?: ""
+                _lyricsStatus.value = when {
+                    result.data != null -> 2
+                    result.error != null -> 4
+                    else -> 3
+                }
+            } else {
+                _lyricsStatus.value = 3
             }
         }
     }
@@ -226,6 +245,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val c = controller ?: return
         val limit = c.duration.coerceAtLeast(0)
         seekTo((c.currentPosition + deltaMs).coerceIn(0, limit))
+    }
+
+    /** Searches again for the current song's lyrics. */
+    fun retryLyrics() {
+        onSongChanged(_state.value.current)
     }
 
     fun toggleShuffle() {

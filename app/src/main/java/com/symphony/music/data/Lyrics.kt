@@ -20,7 +20,7 @@ data class LyricLine(val timeMs: Long, val text: String)
 
 data class LyricsData(val lines: List<LyricLine>, val synced: Boolean)
 
-private val timeTag = Regex("""\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?]""")
+private val timeTag = Regex("""\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]""")
 
 /** Parses LRC text. Lines without time tags give plain, unsynced lyrics. */
 fun parseLyrics(raw: String): LyricsData? {
@@ -115,15 +115,18 @@ private fun decodeUslt(data: ByteArray): String? {
     return String(data, i, data.size - i, charset).trim('\u0000', ' ', '\n')
 }
 
+/** Outcome of an online search: lyrics, nothing found, or the reason it could not run. */
+class LyricsResult(val data: LyricsData?, val error: String?)
+
 /**
  * Lyrics from LRCLIB, a free public lyrics database. The song's title, artist, album and
  * duration are sent to lrclib.net. Results are kept on the phone so each song is fetched once.
  */
-suspend fun loadOnlineLyrics(context: Context, song: Song): LyricsData? = withContext(Dispatchers.IO) {
+suspend fun loadOnlineLyrics(context: Context, song: Song): LyricsResult = withContext(Dispatchers.IO) {
     val cache = File(File(context.filesDir, "lyrics").apply { mkdirs() }, "${song.id}.lrc")
     try {
         if (cache.exists()) {
-            parseLyrics(cache.readText())?.let { return@withContext it }
+            parseLyrics(cache.readText())?.let { return@withContext LyricsResult(it, null) }
         }
     } catch (e: Exception) {
         // Unreadable cache: fetch again.
@@ -131,52 +134,86 @@ suspend fun loadOnlineLyrics(context: Context, song: Song): LyricsData? = withCo
     val raw = try {
         fetchFromLrclib(song)
     } catch (e: Exception) {
-        null
+        return@withContext LyricsResult(null, e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
     }
-    if (raw.isNullOrBlank()) return@withContext null
+    if (raw.isNullOrBlank()) return@withContext LyricsResult(null, null)
     try {
         cache.writeText(raw)
     } catch (e: Exception) {
         // Cache is optional.
     }
-    parseLyrics(raw)
+    LyricsResult(parseLyrics(raw), null)
 }
 
+private val fileExtension = Regex("""\.(mp3|m4a|flac|ogg|opus|wav|aac)$""", RegexOption.IGNORE_CASE)
+private val trackPrefix = Regex("""^\d{1,3}\s*[-._)]\s*""")
+private val extraTag = Regex(
+    """\s*[(\[][^)\]]*(feat|ft\.|official|officiel|audio|video|vidéo|lyrics|clip|remaster|version|prod)[^)\]]*[)\]]""",
+    RegexOption.IGNORE_CASE,
+)
+
+/** "03 - Song (Official Video).mp3" becomes "Song". */
+private fun cleanTitle(title: String): String =
+    title.replace(fileExtension, "").replace(trackPrefix, "").replace(extraTag, "").replace('_', ' ').trim()
+
 private fun fetchFromLrclib(song: Song): String? {
-    val title = URLEncoder.encode(song.title, "UTF-8")
-    val artist = URLEncoder.encode(if (song.artist == "—") "" else song.artist, "UTF-8")
+    val artistName = if (song.artist == "—") "" else song.artist.substringBefore(" feat").substringBefore(" ft.").trim()
+    val titleName = cleanTitle(song.title).ifEmpty { song.title }
+    val title = URLEncoder.encode(titleName, "UTF-8")
+    val artist = URLEncoder.encode(artistName, "UTF-8")
     val album = URLEncoder.encode(if (song.album == "—") "" else song.album, "UTF-8")
     val seconds = song.duration / 1000
 
     val exact = httpGet("https://lrclib.net/api/get?track_name=$title&artist_name=$artist&album_name=$album&duration=$seconds")
     if (exact != null) {
-        pickLyrics(JSONObject(exact))?.let { return it }
+        pickLyrics(JSONObject(exact), true)?.let { return it }
     }
-
-    val found = httpGet("https://lrclib.net/api/search?track_name=$title&artist_name=$artist") ?: return null
-    val results = JSONArray(found)
-    var fallback: String? = null
-    for (i in 0 until results.length()) {
-        val item = results.getJSONObject(i)
-        val close = kotlin.math.abs(item.optDouble("duration", -100.0) - seconds) <= 4
-        val synced = if (item.isNull("syncedLyrics")) null else item.optString("syncedLyrics").takeIf { it.isNotBlank() }
-        if (close && synced != null) return synced
-        if (close && fallback == null) fallback = pickLyrics(item)
+    val queries = ArrayList<String>()
+    if (artistName.isNotEmpty()) {
+        queries += "https://lrclib.net/api/search?track_name=$title&artist_name=$artist"
+        queries += "https://lrclib.net/api/search?q=" + URLEncoder.encode("$artistName $titleName", "UTF-8")
+    } else {
+        queries += "https://lrclib.net/api/search?q=$title"
     }
-    return fallback
+    for (query in queries) {
+        val found = httpGet(query) ?: continue
+        choose(JSONArray(found), seconds)?.let { return it }
+    }
+    return null
 }
 
-private fun pickLyrics(item: JSONObject): String? {
-    val synced = if (item.isNull("syncedLyrics")) null else item.optString("syncedLyrics").takeIf { it.isNotBlank() }
-    if (synced != null) return synced
-    return if (item.isNull("plainLyrics")) null else item.optString("plainLyrics").takeIf { it.isNotBlank() }
+/** Best entry of a search: same length and timed first, then same length, then any text. */
+private fun choose(results: JSONArray, seconds: Long): String? {
+    var sameLength: String? = null
+    var anyText: String? = null
+    for (i in 0 until results.length()) {
+        val item = results.getJSONObject(i)
+        val close = kotlin.math.abs(item.optDouble("duration", -100.0) - seconds) <= 6
+        if (close) {
+            val timed = textOf(item, "syncedLyrics")
+            if (timed != null) return timed
+            if (sameLength == null) sameLength = textOf(item, "plainLyrics")
+        } else if (anyText == null) {
+            // A different recording: its timings would be wrong, so keep only the plain text.
+            anyText = textOf(item, "plainLyrics")
+        }
+    }
+    return sameLength ?: anyText
+}
+
+private fun textOf(item: JSONObject, key: String): String? =
+    if (item.isNull(key)) null else item.optString(key).takeIf { it.isNotBlank() }
+
+private fun pickLyrics(item: JSONObject, allowTimed: Boolean): String? {
+    if (allowTimed) textOf(item, "syncedLyrics")?.let { return it }
+    return textOf(item, "plainLyrics")
 }
 
 private fun httpGet(address: String): String? {
     val connection = URL(address).openConnection() as HttpURLConnection
     return try {
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
+        connection.connectTimeout = 12_000
+        connection.readTimeout = 12_000
         connection.setRequestProperty("User-Agent", "Symphony (https://github.com/Giscardkabenee/Symphony)")
         if (connection.responseCode == 200) connection.inputStream.bufferedReader().use { it.readText() } else null
     } finally {

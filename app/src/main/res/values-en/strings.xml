@@ -97,4 +97,7 @@
     <string name="usb_dac_desc">Routes sound to a USB DAC or USB headset when one is plugged in</string>
     <string name="artist_photos">Artist photos</string>
     <string name="artist_photos_desc">Looks up the photo on Deezer. The artist name is sent to deezer.com</string>
+    <string name="lyrics_searching">Looking for lyrics…</string>
+    <string name="lyrics_error">The lyrics search failed</string>
+    <string name="retry">Try again</string>
 </resources>
