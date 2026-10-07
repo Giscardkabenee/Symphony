@@ -12,8 +12,9 @@ android {
         applicationId = "com.symphony.music"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        // The GitHub build passes its run number, so every published APK is newer than the last.
+        versionCode = (project.findProperty("buildNumber") as String?)?.toIntOrNull() ?: 2
+        versionName = "0.3.0"
     }
     signingConfigs {
         // Fixed key so each new APK installs over the previous one.

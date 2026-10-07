@@ -79,4 +79,14 @@
     <string name="local_music">Musique locale</string>
     <string name="filter_short">Filtrer les sons non musicaux</string>
     <string name="filter_short_desc">Masque les extraits de moins de 30 secondes</string>
+    <string name="spatial">Audio spatial</string>
+    <string name="spatial_desc">Élargit le son stéréo. Selon le téléphone, l\'effet peut être absent</string>
+    <string name="app_section">Application</string>
+    <string name="update">Mise à jour</string>
+    <string name="update_check">Mettre à jour</string>
+    <string name="update_checking">Recherche d\'une nouvelle version…</string>
+    <string name="update_none">Symphony est à jour</string>
+    <string name="update_downloading">Téléchargement… %1$d %%</string>
+    <string name="update_error">Mise à jour impossible. Vérifiez la connexion</string>
+    <string name="version_label">Version %1$s (build %2$d)</string>
 </resources>

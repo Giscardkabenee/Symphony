@@ -28,6 +28,8 @@ import androidx.compose.material.icons.rounded.Label
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.SurroundSound
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.QueueMusic
@@ -56,6 +58,8 @@ import com.symphony.music.R
 import com.symphony.music.data.AlbumInfo
 import com.symphony.music.data.Flags
 import com.symphony.music.data.Song
+import com.symphony.music.data.UpdateUi
+import com.symphony.music.data.Updater
 import com.symphony.music.data.artworkUri
 
 /** Route argument that stands for the built-in Favourites list. */
@@ -613,6 +617,8 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.Stop, stringResource(R.string.stop_on_close), stringResource(R.string.stop_on_close_desc), settings.stopOnClose) { vm.setFlag(Flags.STOP_ON_CLOSE, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.VolumeOff, stringResource(R.string.hide_volume), stringResource(R.string.hide_volume_desc), settings.hideVolume) { vm.setFlag(Flags.HIDE_VOLUME, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.SurroundSound, stringResource(R.string.spatial), stringResource(R.string.spatial_desc), settings.spatial) { vm.setFlag(Flags.SPATIAL, it) }
             }
         }
         item { SettingsLabel(stringResource(R.string.appearance)) }
@@ -656,6 +662,36 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
         item {
             SettingsCard {
                 SettingSwitch(Icons.Rounded.FilterAlt, stringResource(R.string.filter_short), stringResource(R.string.filter_short_desc), settings.filterShort) { vm.setFlag(Flags.FILTER_SHORT, it) }
+            }
+        }
+        item { SettingsLabel(stringResource(R.string.app_section)) }
+        item {
+            val update by vm.update.collectAsStateWithLifecycle()
+            val context = LocalContext.current
+            val status = when (update.status) {
+                UpdateUi.CHECKING -> stringResource(R.string.update_checking)
+                UpdateUi.UP_TO_DATE -> stringResource(R.string.update_none)
+                UpdateUi.DOWNLOADING -> stringResource(R.string.update_downloading, update.progress)
+                UpdateUi.ERROR -> stringResource(R.string.update_error)
+                else -> stringResource(R.string.version_label, Updater.versionName(context), Updater.installedBuild(context))
+            }
+            val busy = update.status == UpdateUi.CHECKING || update.status == UpdateUi.DOWNLOADING
+            SettingsCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Rounded.SystemUpdate, contentDescription = null)
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.update), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                        Text(status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Button(onClick = { vm.checkUpdate() }, enabled = !busy) {
+                        Text(stringResource(R.string.update_check), fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }

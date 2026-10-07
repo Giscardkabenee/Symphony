@@ -19,6 +19,8 @@ import com.symphony.music.data.LyricsData
 import com.symphony.music.data.MusicRepository
 import com.symphony.music.data.Prefs
 import com.symphony.music.data.Song
+import com.symphony.music.data.UpdateUi
+import com.symphony.music.data.Updater
 import com.symphony.music.data.buildAlbums
 import com.symphony.music.data.buildArtists
 import com.symphony.music.data.loadLyrics
@@ -71,6 +73,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _lyrics = MutableStateFlow<LyricsData?>(null)
     val lyrics: StateFlow<LyricsData?> = _lyrics.asStateFlow()
+
+    private val _update = MutableStateFlow(UpdateUi())
+    val update: StateFlow<UpdateUi> = _update.asStateFlow()
 
     private var byId: Map<Long, Song> = emptyMap()
     private var controller: MediaController? = null
@@ -270,6 +275,33 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun deletePlaylist(name: String) { viewModelScope.launch { prefs.deletePlaylist(name) } }
     fun addToPlaylist(name: String, id: Long) { viewModelScope.launch { prefs.addToPlaylist(name, id) } }
     fun removeFromPlaylist(name: String, id: Long) { viewModelScope.launch { prefs.removeFromPlaylist(name, id) } }
+
+    /** Looks for a newer APK online; if there is one, downloads it and opens the installer. */
+    fun checkUpdate() {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            _update.value = UpdateUi(UpdateUi.CHECKING)
+            try {
+                val release = Updater.latest()
+                if (release == null) {
+                    _update.value = UpdateUi(UpdateUi.ERROR)
+                    return@launch
+                }
+                if (release.build <= Updater.installedBuild(app)) {
+                    _update.value = UpdateUi(UpdateUi.UP_TO_DATE)
+                    return@launch
+                }
+                _update.value = UpdateUi(UpdateUi.DOWNLOADING, 0)
+                val file = Updater.download(app, release.url) { percent ->
+                    _update.value = UpdateUi(UpdateUi.DOWNLOADING, percent)
+                }
+                _update.value = UpdateUi(UpdateUi.IDLE)
+                Updater.install(app, file)
+            } catch (e: Exception) {
+                _update.value = UpdateUi(UpdateUi.ERROR)
+            }
+        }
+    }
 
     fun songsFor(ids: List<Long>): List<Song> = ids.mapNotNull { byId[it] }
 

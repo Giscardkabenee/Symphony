@@ -78,4 +78,14 @@
     <string name="local_music">Local music</string>
     <string name="filter_short">Filter non-music audio</string>
     <string name="filter_short_desc">Hides clips shorter than 30 seconds</string>
+    <string name="spatial">Spatial audio</string>
+    <string name="spatial_desc">Widens stereo sound. May be unavailable on some phones</string>
+    <string name="app_section">App</string>
+    <string name="update">Update</string>
+    <string name="update_check">Update</string>
+    <string name="update_checking">Looking for a new version…</string>
+    <string name="update_none">Symphony is up to date</string>
+    <string name="update_downloading">Downloading… %1$d %%</string>
+    <string name="update_error">Update failed. Check your connection</string>
+    <string name="version_label">Version %1$s (build %2$d)</string>
 </resources>

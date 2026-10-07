@@ -3,6 +3,8 @@ package com.symphony.music.playback
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Intent
+import android.media.AudioManager
+import android.media.audiofx.Virtualizer
 import android.provider.MediaStore
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -25,6 +27,7 @@ class PlaybackService : MediaSessionService() {
 
     private var session: MediaSession? = null
     private var stopOnClose = false
+    private var virtualizer: Virtualizer? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -37,6 +40,15 @@ class PlaybackService : MediaSessionService() {
             .setAudioAttributes(attributes, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
+        // Stereo widening effect; not every phone provides it.
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        val audioSessionId = audioManager.generateAudioSessionId()
+        player.audioSessionId = audioSessionId
+        virtualizer = try {
+            Virtualizer(0, audioSessionId).apply { if (strengthSupported) setStrength(1000) }
+        } catch (e: Exception) {
+            null
+        }
         val openApp = PendingIntent.getActivity(
             this,
             0,
@@ -51,6 +63,11 @@ class PlaybackService : MediaSessionService() {
             Prefs(this@PlaybackService).flow.collect {
                 player.skipSilenceEnabled = it.skipSilence
                 stopOnClose = it.stopOnClose
+                try {
+                    virtualizer?.enabled = it.spatial
+                } catch (e: Exception) {
+                    // Effect unavailable on this device.
+                }
             }
         }
     }
@@ -69,6 +86,12 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         scope.cancel()
+        try {
+            virtualizer?.release()
+        } catch (e: Exception) {
+            // Already released.
+        }
+        virtualizer = null
         session?.run {
             player.release()
             release()
