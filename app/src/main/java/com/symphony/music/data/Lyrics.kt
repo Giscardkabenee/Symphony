@@ -131,11 +131,27 @@ suspend fun loadOnlineLyrics(context: Context, song: Song): LyricsResult = withC
     } catch (e: Exception) {
         // Unreadable cache: fetch again.
     }
-    val raw = try {
-        fetchFromLrclib(song)
-    } catch (e: Exception) {
-        return@withContext LyricsResult(null, e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
+    val sources: List<(Song) -> String?> = listOf(::fetchFromLrclib, ::fetchFromLyricsPlus, ::fetchFromKugou)
+    var raw: String? = null
+    var failure: String? = null
+    var failures = 0
+    for (source in sources) {
+        val found = try {
+            source(song)
+        } catch (e: Exception) {
+            failures++
+            failure = e.javaClass.simpleName + (e.message?.let { ": $it" } ?: "")
+            null
+        }
+        if (found.isNullOrBlank()) continue
+        // Timed lyrics win; plain text is kept only until a timed version turns up.
+        if (parseLyrics(found)?.synced == true) {
+            raw = found
+            break
+        }
+        if (raw == null) raw = found
     }
+    if (raw == null && failures == sources.size) return@withContext LyricsResult(null, failure)
     if (raw.isNullOrBlank()) return@withContext LyricsResult(null, null)
     try {
         cache.writeText(raw)
@@ -207,6 +223,67 @@ private fun textOf(item: JSONObject, key: String): String? =
 private fun pickLyrics(item: JSONObject, allowTimed: Boolean): String? {
     if (allowTimed) textOf(item, "syncedLyrics")?.let { return it }
     return textOf(item, "plainLyrics")
+}
+
+/** LyricsPlus community mirrors: line-timed lyrics as JSON, tried one after the other. */
+private fun fetchFromLyricsPlus(song: Song): String? {
+    val titleName = cleanTitle(song.title).ifEmpty { song.title }
+    val artistName = if (song.artist == "—") "" else song.artist.split(",", "&", "/").first().trim()
+    var query = "/v2/lyrics/get?title=" + URLEncoder.encode(titleName, "UTF-8") + "&artist=" + URLEncoder.encode(artistName, "UTF-8")
+    if (song.duration > 0) query += "&duration=" + (song.duration / 1000)
+    val mirrors = listOf(
+        "https://lyricsplus.binimum.org",
+        "https://lyricsplus.prjktla.workers.dev",
+        "https://lyricsplus.prjktla.my.id",
+        "https://lyricsplus.atomix.one",
+    )
+    for (mirror in mirrors) {
+        val body = try {
+            httpGet(mirror + query)
+        } catch (e: Exception) {
+            null
+        } ?: continue
+        val lines = try {
+            JSONObject(body).optJSONArray("lyrics")
+        } catch (e: Exception) {
+            null
+        } ?: continue
+        val out = StringBuilder()
+        for (i in 0 until lines.length()) {
+            val line = lines.optJSONObject(i) ?: continue
+            var text = line.optString("text")
+            if (text.isBlank()) {
+                val parts = line.optJSONArray("syllabus")
+                if (parts != null) {
+                    val joined = StringBuilder()
+                    for (j in 0 until parts.length()) joined.append(parts.optJSONObject(j)?.optString("text") ?: "")
+                    text = joined.toString()
+                }
+            }
+            if (text.isBlank()) continue
+            val ms = line.optLong("time", 0L)
+            out.append("[%02d:%02d.%02d]".format(ms / 60_000, ms / 1000 % 60, ms % 1000 / 10)).append(text.trim()).append('\n')
+        }
+        if (out.isNotEmpty()) return out.toString()
+    }
+    return null
+}
+
+/** KuGou's lyrics search: first candidate for the title, artist and duration. */
+private fun fetchFromKugou(song: Song): String? {
+    val artistName = if (song.artist == "—") "" else song.artist
+    val keyword = URLEncoder.encode((cleanTitle(song.title).ifEmpty { song.title } + " " + artistName).trim(), "UTF-8")
+    val search = httpGet("https://lyrics.kugou.com/search?ver=1&man=yes&client=pc&keyword=$keyword&duration=${song.duration}&hash=") ?: return null
+    val candidates = JSONObject(search).optJSONArray("candidates") ?: return null
+    if (candidates.length() == 0) return null
+    val best = candidates.getJSONObject(0)
+    val id = URLEncoder.encode(best.optString("id"), "UTF-8")
+    val key = URLEncoder.encode(best.optString("accesskey"), "UTF-8")
+    if (id.isEmpty() || key.isEmpty()) return null
+    val download = httpGet("https://lyrics.kugou.com/download?ver=1&client=pc&id=$id&accesskey=$key&fmt=lrc&charset=utf8") ?: return null
+    val content = JSONObject(download).optString("content")
+    if (content.isBlank()) return null
+    return String(android.util.Base64.decode(content, android.util.Base64.DEFAULT), Charsets.UTF_8)
 }
 
 private fun httpGet(address: String): String? {

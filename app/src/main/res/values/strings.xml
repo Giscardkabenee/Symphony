@@ -91,7 +91,7 @@
     <string name="version_label">Version %1$s (build %2$d)</string>
     <string name="seek">Position dans le titre</string>
     <string name="online_lyrics">Paroles en ligne</string>
-    <string name="online_lyrics_desc">Cherche les paroles sur LRCLIB quand le fichier n\'en contient pas. Le titre et l\'artiste sont envoyés à lrclib.net</string>
+    <string name="online_lyrics_desc">Cherche sur LRCLIB, LyricsPlus et KuGou quand le fichier n\'a pas de paroles. Le titre et l\'artiste leur sont envoyés</string>
     <string name="output_precision">Précision de sortie</string>
     <string name="restart_needed">Fermez complètement Symphony puis rouvrez-la pour appliquer ce choix</string>
     <string name="usb_dac">Préférer le DAC USB</string>
