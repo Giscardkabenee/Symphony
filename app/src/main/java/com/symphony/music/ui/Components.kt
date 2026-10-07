@@ -219,6 +219,14 @@ fun SongRow(
         if (active) {
             Icon(Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.padding(horizontal = 8.dp))
         }
+        if (song.duration > 0) {
+            Text(
+                text = formatTime(song.duration),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
         if (onMore != null) {
             IconButton(onClick = onMore) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more))
