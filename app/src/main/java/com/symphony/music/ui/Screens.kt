@@ -82,7 +82,7 @@ private val BarSpace = 210.dp
 @Composable
 private fun ScreenTitle(text: String, action: @Composable () -> Unit = {}) {
     Row(
-        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
@@ -136,8 +136,9 @@ fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onStack: (String) ->
     val most = remember(settings.playCounts, songs) { vm.songsFor(mostPlayedIds(settings.playCounts)) }
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        item {
-            ScreenTitle(stringResource(R.string.tab_home)) {
+        // The title stays in place while the list scrolls under it.
+        stickyHeader {
+            ScreenTitle(stringResource(R.string.app_name)) {
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
                 }
@@ -285,7 +286,7 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
     val recent = remember(songs) { songs.sortedByDescending { it.dateAdded }.take(25) }
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        item {
+        stickyHeader {
             ScreenTitle(stringResource(R.string.tab_library)) {
                 IconButton(onClick = { creating = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.new_playlist))
@@ -672,8 +673,8 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
 fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = BarSpace)) {
-        item {
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        stickyHeader {
+            Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
