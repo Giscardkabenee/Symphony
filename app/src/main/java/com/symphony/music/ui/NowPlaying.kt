@@ -87,6 +87,7 @@ import com.symphony.music.PlayerViewModel
 import com.symphony.music.R
 import com.symphony.music.data.LyricsData
 import com.symphony.music.data.PODCAST_MARK
+import com.symphony.music.data.PREVIEW_MARK
 import com.symphony.music.data.Song
 import kotlin.math.PI
 import kotlin.math.cos
@@ -268,7 +269,15 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
 /** "Lossless" for uncompressed formats, otherwise judged from the file's bitrate. */
 @Composable
 private fun qualityLabel(song: Song): String {
-    if (song.id < 0) return stringResource(if (song.path == PODCAST_MARK) R.string.podcast else R.string.live)
+    if (song.id < 0) {
+        return stringResource(
+            when (song.path) {
+                PODCAST_MARK -> R.string.podcast
+                PREVIEW_MARK -> R.string.preview
+                else -> R.string.live
+            }
+        )
+    }
     val extension = song.path.substringAfterLast('.', "").lowercase()
     return when {
         extension in setOf("flac", "wav", "aiff", "aif", "ape", "alac", "dsf") -> stringResource(R.string.quality_lossless)

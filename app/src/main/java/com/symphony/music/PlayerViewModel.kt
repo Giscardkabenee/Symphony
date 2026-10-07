@@ -20,6 +20,7 @@ import com.symphony.music.data.LyricsData
 import com.symphony.music.data.MusicRepository
 import com.symphony.music.data.Prefs
 import com.symphony.music.data.ArtOverrides
+import com.symphony.music.data.CatalogTrack
 import com.symphony.music.data.Downloads
 import com.symphony.music.data.Episode
 import com.symphony.music.data.Podcast
@@ -366,6 +367,33 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (episode.durationMs > 0 && start > episode.durationMs - 15_000) start = 0L
         c.shuffleModeEnabled = false
         c.setMediaItem(item, start)
+        c.prepare()
+        c.play()
+    }
+
+    /** Plays the official 30-second preview of a catalogue song. */
+    fun playPreview(track: CatalogTrack) {
+        val c = controller ?: return
+        if (track.preview.isBlank()) return
+        val song = track.toSong()
+        live[song.id] = song
+        if (track.cover.isNotBlank()) ArtOverrides.urls[song.id] = track.cover
+        val uri = Uri.parse(track.preview)
+        val item = MediaItem.Builder()
+            .setMediaId(song.id.toString())
+            .setUri(uri)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(track.title)
+                    .setArtist(track.artist)
+                    .setAlbumTitle(track.album)
+                    .setArtworkUri(if (track.cover.isNotBlank()) Uri.parse(track.cover) else null)
+                    .build()
+            )
+            .build()
+        c.shuffleModeEnabled = false
+        c.setMediaItem(item)
         c.prepare()
         c.play()
     }

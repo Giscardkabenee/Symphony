@@ -130,4 +130,10 @@
     <string name="downloads">Downloads</string>
     <string name="download">Download</string>
     <string name="download_delete">Delete download</string>
+    <string name="discover">Discover</string>
+    <string name="discover_desc">Look up a song and hear a preview</string>
+    <string name="discover_search">Song or artist</string>
+    <string name="discover_note">Deezer catalogue. Tap a result for a 30-second preview; the arrow opens the song in Deezer.</string>
+    <string name="preview">Preview</string>
+    <string name="open_in_deezer">Open in Deezer</string>
 </resources>

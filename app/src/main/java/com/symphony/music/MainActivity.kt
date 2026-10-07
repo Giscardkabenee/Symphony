@@ -80,6 +80,7 @@ import com.symphony.music.ui.AlbumScreen
 import com.symphony.music.ui.AlbumsScreen
 import com.symphony.music.ui.ArtistScreen
 import com.symphony.music.ui.ArtistsScreen
+import com.symphony.music.ui.DiscoverScreen
 import com.symphony.music.ui.FloatingBar
 import com.symphony.music.ui.HomeScreen
 import com.symphony.music.ui.LibraryScreen
@@ -180,12 +181,13 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openMenu) }
             composable("albums") { AlbumsScreen(vm, openAlbum) }
             composable("artists") { ArtistsScreen(vm, openArtist) }
-            composable("library") { LibraryScreen(vm, openPlaylist, openMenu, { nav.navigate("podcasts") }) { nav.navigate("radio") } }
+            composable("library") { LibraryScreen(vm, openPlaylist, openMenu, { nav.navigate("discover") }, { nav.navigate("podcasts") }) { nav.navigate("radio") } }
             composable("search") { SearchScreen(vm, openAlbum, openArtist, openMenu) }
             composable("podcasts") { PodcastsScreen(vm, { nav.popBackStack() }) { nav.navigate("podcast/$it") } }
             composable("podcast/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 PodcastScreen(vm, e.arguments?.getLong("id") ?: 0L) { nav.popBackStack() }
             }
+            composable("discover") { DiscoverScreen(vm) { nav.popBackStack() } }
             composable("radio") { RadioScreen(vm) { nav.popBackStack() } }
             composable("settings") { SettingsScreen(vm) { nav.popBackStack() } }
             composable("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->

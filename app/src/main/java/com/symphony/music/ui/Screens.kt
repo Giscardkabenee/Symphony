@@ -19,6 +19,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Fullscreen
@@ -303,7 +304,7 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
 // ---------------------------------------------------------------- Library
 
 @Composable
-fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (Song) -> Unit, onPodcasts: () -> Unit, onRadio: () -> Unit) {
+fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (Song) -> Unit, onDiscover: () -> Unit, onPodcasts: () -> Unit, onRadio: () -> Unit) {
     val songs by vm.songs.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -320,6 +321,7 @@ fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (So
         }
         item { LibraryEntry(Icons.Rounded.Radio, stringResource(R.string.radios), stringResource(R.string.radio_desc), onRadio) }
         item { LibraryEntry(Icons.Rounded.Podcasts, stringResource(R.string.podcasts), stringResource(R.string.podcast_desc), onPodcasts) }
+        item { LibraryEntry(Icons.Rounded.Explore, stringResource(R.string.discover), stringResource(R.string.discover_desc), onDiscover) }
         item { SectionHeader(stringResource(R.string.playlists)) }
         item {
             PlaylistRow(

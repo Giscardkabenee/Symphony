@@ -131,4 +131,10 @@
     <string name="downloads">Téléchargements</string>
     <string name="download">Télécharger</string>
     <string name="download_delete">Supprimer le téléchargement</string>
+    <string name="discover">Découvrir</string>
+    <string name="discover_desc">Chercher une chanson et écouter un extrait</string>
+    <string name="discover_search">Titre ou artiste</string>
+    <string name="discover_note">Catalogue Deezer. Toucher un résultat lance un extrait de 30 secondes ; la flèche ouvre le titre dans Deezer.</string>
+    <string name="preview">Extrait</string>
+    <string name="open_in_deezer">Ouvrir dans Deezer</string>
 </resources>
