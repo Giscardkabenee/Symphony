@@ -181,7 +181,7 @@ fun RadioScreen(vm: PlayerViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun StationRow(station: Station, active: Boolean, favorite: Boolean, onFavorite: () -> Unit, onClick: () -> Unit) {
+internal fun StationRow(station: Station, active: Boolean, favorite: Boolean, onFavorite: () -> Unit, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

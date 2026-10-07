@@ -66,7 +66,7 @@ import kotlinx.coroutines.delay
 
 /** Picture from the web over a coloured initial. */
 @Composable
-private fun WebArt(url: String, label: String, modifier: Modifier, shape: Shape) {
+internal fun WebArt(url: String, label: String, modifier: Modifier, shape: Shape) {
     Box(modifier.clip(shape).background(colorFor(label)), contentAlignment = Alignment.Center) {
         Text(label.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.ExtraBold)
         if (url.isNotBlank()) {

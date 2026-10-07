@@ -82,10 +82,10 @@ const val ADDED_KEY = "__added__"
 const val MOST_KEY = "__most__"
 
 /** Room left at the bottom of every list for the floating bar. */
-private val BarSpace = 210.dp
+internal val BarSpace = 210.dp
 
 @Composable
-private fun ScreenTitle(text: String, subtitle: String? = null, action: @Composable () -> Unit = {}) {
+internal fun ScreenTitle(text: String, subtitle: String? = null, action: @Composable () -> Unit = {}) {
     Row(
         modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -101,7 +101,7 @@ private fun ScreenTitle(text: String, subtitle: String? = null, action: @Composa
 }
 
 @Composable
-private fun SectionHeader(text: String) {
+internal fun SectionHeader(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleLarge,
@@ -134,52 +134,13 @@ private fun AlbumCard(album: AlbumInfo, modifier: Modifier = Modifier, onClick: 
     }
 }
 
-// ---------------------------------------------------------------- Home
-
-@Composable
-fun HomeScreen(vm: PlayerViewModel, onSettings: () -> Unit, onStack: (String) -> Unit, onMore: (Song) -> Unit) {
-    val songs by vm.songs.collectAsStateWithLifecycle()
-    val settings by vm.settings.collectAsStateWithLifecycle()
-    val state by vm.state.collectAsStateWithLifecycle()
-    val recent = remember(settings.recents, songs) { vm.songsFor(settings.recents) }
-    val added = remember(songs) { songs.sortedByDescending { it.dateAdded }.take(50) }
-    val most = remember(settings.playCounts, songs) { vm.songsFor(mostPlayedIds(settings.playCounts)) }
-
-    LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        // The title stays in place while the list scrolls under it.
-        stickyHeader {
-            ScreenTitle(stringResource(R.string.app_name), stringResource(R.string.songs_count, songs.size)) {
-                IconButton(onClick = onSettings) {
-                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
-                }
-            }
-        }
-        if (songs.isEmpty()) {
-            item { EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint)) }
-        } else {
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    item { StackCard(stringResource(R.string.recently_played), recent) { onStack(RECENT_KEY) } }
-                    item { StackCard(stringResource(R.string.recently_added), added) { onStack(ADDED_KEY) } }
-                    item { StackCard(stringResource(R.string.most_played), most) { onStack(MOST_KEY) } }
-                }
-            }
-            item { SectionHeader(stringResource(R.string.all_songs)) }
-            items(songs.size) { i ->
-                val song = songs[i]
-                SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(songs, i) }
-            }
-        }
-    }
-}
-
 /** The fifty most started songs, most played first. */
-private fun mostPlayedIds(counts: Map<Long, Int>): List<Long> =
+internal fun mostPlayedIds(counts: Map<Long, Int>): List<Long> =
     counts.entries.sortedByDescending { it.value }.take(50).map { it.key }
 
 /** A collection drawn as a tabbed folder tinted by its newest cover, with two albums sticking out. */
 @Composable
-private fun StackCard(title: String, songs: List<Song>, onClick: () -> Unit) {
+internal fun StackCard(title: String, songs: List<Song>, onClick: () -> Unit) {
     val covers = remember(songs) { songs.distinctBy { it.albumId }.take(3) }
     val context = LocalContext.current
     val fallback = colorFor(title)
@@ -238,7 +199,6 @@ fun AlbumsScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit) {
     val albums by vm.albums.collectAsStateWithLifecycle()
     // The title stays put; only the grid scrolls.
     Column(Modifier.fillMaxSize()) {
-    ScreenTitle(stringResource(R.string.tab_albums), stringResource(R.string.albums_count, albums.size))
     LazyVerticalGrid(
         columns = GridCells.Adaptive(150.dp),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = BarSpace),
@@ -262,7 +222,6 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     // The title stays put; only the grid scrolls.
     Column(Modifier.fillMaxSize()) {
-    ScreenTitle(stringResource(R.string.tab_artists), stringResource(R.string.artists_count, artists.size))
     LazyVerticalGrid(
         columns = GridCells.Adaptive(104.dp),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = BarSpace),
@@ -301,60 +260,9 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
     }
 }
 
-// ---------------------------------------------------------------- Library
-
-@Composable
-fun LibraryScreen(vm: PlayerViewModel, onPlaylist: (String) -> Unit, onMore: (Song) -> Unit, onDiscover: () -> Unit, onPodcasts: () -> Unit, onRadio: () -> Unit) {
-    val songs by vm.songs.collectAsStateWithLifecycle()
-    val settings by vm.settings.collectAsStateWithLifecycle()
-    val state by vm.state.collectAsStateWithLifecycle()
-    var creating by remember { mutableStateOf(false) }
-    val recent = remember(songs) { songs.sortedByDescending { it.dateAdded }.take(25) }
-
-    LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        stickyHeader {
-            ScreenTitle(stringResource(R.string.tab_library), stringResource(R.string.playlists_count, settings.playlists.size + 1)) {
-                IconButton(onClick = { creating = true }) {
-                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.new_playlist))
-                }
-            }
-        }
-        item { LibraryEntry(Icons.Rounded.Radio, stringResource(R.string.radios), stringResource(R.string.radio_desc), onRadio) }
-        item { LibraryEntry(Icons.Rounded.Podcasts, stringResource(R.string.podcasts), stringResource(R.string.podcast_desc), onPodcasts) }
-        item { LibraryEntry(Icons.Rounded.Explore, stringResource(R.string.discover), stringResource(R.string.discover_desc), onDiscover) }
-        item { SectionHeader(stringResource(R.string.playlists)) }
-        item {
-            PlaylistRow(
-                name = stringResource(R.string.favorites),
-                count = settings.favorites.size,
-                icon = Icons.Rounded.Favorite,
-            ) { onPlaylist(FAVORITES_KEY) }
-        }
-        val names = settings.playlists.keys.toList()
-        items(names.size) { i ->
-            val name = names[i]
-            PlaylistRow(name, settings.playlists[name]?.size ?: 0, Icons.Rounded.QueueMusic) { onPlaylist(name) }
-        }
-        if (recent.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.recently_added)) }
-        }
-        items(recent.size) { i ->
-            val song = recent[i]
-            SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(recent, i) }
-        }
-    }
-
-    if (creating) {
-        NewPlaylistDialog(onDismiss = { creating = false }) { name ->
-            vm.createPlaylist(name)
-            creating = false
-        }
-    }
-}
-
 /** Large entry at the top of the library, leading to an online section. */
 @Composable
-private fun LibraryEntry(icon: ImageVector, title: String, description: String, onClick: () -> Unit) {
+internal fun LibraryEntry(icon: ImageVector, title: String, description: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -381,7 +289,7 @@ private fun LibraryEntry(icon: ImageVector, title: String, description: String, 
 }
 
 @Composable
-private fun PlaylistRow(name: String, count: Int, icon: ImageVector, onClick: () -> Unit) {
+internal fun PlaylistRow(name: String, count: Int, icon: ImageVector, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -424,97 +332,6 @@ fun NewPlaylistDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
-}
-
-// ---------------------------------------------------------------- Search
-
-@Composable
-fun SearchScreen(vm: PlayerViewModel, onAlbum: (Long) -> Unit, onArtist: (String) -> Unit, onMore: (Song) -> Unit) {
-    val songs by vm.songs.collectAsStateWithLifecycle()
-    val albums by vm.albums.collectAsStateWithLifecycle()
-    val artists by vm.artists.collectAsStateWithLifecycle()
-    var query by rememberSaveable { mutableStateOf("") }
-    val settings by vm.settings.collectAsStateWithLifecycle()
-    val q = query.trim()
-    val foundSongs = remember(q, songs) {
-        if (q.isEmpty()) emptyList() else songs.filter { it.title.contains(q, true) || it.artist.contains(q, true) }.take(30)
-    }
-    val foundAlbums = remember(q, albums) {
-        if (q.isEmpty()) emptyList() else albums.filter { it.title.contains(q, true) }.take(10)
-    }
-    val foundArtists = remember(q, artists) {
-        if (q.isEmpty()) emptyList() else artists.filter { it.name.contains(q, true) }.take(10)
-    }
-
-    LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        item {
-            TextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.search_hint)) },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }) {
-                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.clear))
-                        }
-                    }
-                },
-                shape = CircleShape,
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ),
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
-            )
-        }
-        if (q.isNotEmpty() && foundSongs.isEmpty() && foundAlbums.isEmpty() && foundArtists.isEmpty()) {
-            item { EmptyState(stringResource(R.string.no_results, q)) }
-        }
-        if (foundSongs.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.songs)) }
-            items(foundSongs.size) { i ->
-                val song = foundSongs[i]
-                SongRow(song, onMore = { onMore(song) }) { vm.play(foundSongs, i) }
-            }
-        }
-        if (foundAlbums.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.tab_albums)) }
-            items(foundAlbums.size) { i ->
-                val album = foundAlbums[i]
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable { onAlbum(album.id) }.padding(horizontal = 20.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Artwork(album.id, album.title, Modifier.size(56.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(album.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                        Text(album.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-        if (foundArtists.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.tab_artists)) }
-            items(foundArtists.size) { i ->
-                val artist = foundArtists[i]
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable { onArtist(artist.name) }.padding(horizontal = 20.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(56.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
 }
 
 // ---------------------------------------------------------------- Detail screens

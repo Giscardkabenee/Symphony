@@ -48,6 +48,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
@@ -336,9 +338,8 @@ private data class Tab(val route: String, val label: Int, val icon: ImageVector)
 
 private val tabs = listOf(
     Tab("home", R.string.tab_home, Icons.Rounded.Home),
-    Tab("albums", R.string.tab_albums, Icons.Rounded.Album),
-    Tab("artists", R.string.tab_artists, Icons.Rounded.Person),
-    Tab("library", R.string.tab_library, Icons.Rounded.LibraryMusic),
+    Tab("music", R.string.tab_music, Icons.Rounded.MusicNote),
+    Tab("online", R.string.tab_online, Icons.Rounded.Public),
 )
 
 /** Mini-player pill above the rounded tab bar, with the round search button beside it. */

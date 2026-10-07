@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Symphony</string>
-    <string name="tab_home">Titres</string>
+    <string name="tab_home">Accueil</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_artists">Artistes</string>
     <string name="tab_library">Bibliothèque</string>
@@ -137,4 +137,25 @@
     <string name="discover_note">Catalogue Deezer. Toucher un résultat lance un extrait de 30 secondes ; la flèche ouvre le titre dans Deezer.</string>
     <string name="preview">Extrait</string>
     <string name="open_in_deezer">Ouvrir dans Deezer</string>
+    <string name="tab_music">Musique</string>
+    <string name="tab_online">En ligne</string>
+    <string name="online_sub">Utilise votre connexion Internet</string>
+    <string name="play_all">Tout lire</string>
+    <string name="home_resume">Reprendre</string>
+    <string name="home_now">En cours</string>
+    <string name="favorite_radios">Radios favorites</string>
+    <string name="latest_albums">Derniers albums</string>
+    <string name="see_all">Tout voir</string>
+    <string name="all_stations">Toutes les stations</string>
+    <string name="find_show">Chercher une émission</string>
+    <string name="downloads_offline">Épisodes disponibles hors ligne : %1$d</string>
+    <string name="my_music">Ma musique</string>
+    <string name="catalogue">Catalogue</string>
+    <string name="preview_tag">EXTRAIT</string>
+    <string name="live_tag">EN DIRECT</string>
+    <string name="search_all_hint">Musique, radios, podcasts</string>
+    <string name="search_all_title">Chercher partout</string>
+    <string name="search_all_text">Votre musique, les radios, les podcasts et le catalogue, dans un seul champ.</string>
+    <string name="library_summary">%1$d titres · %2$d albums · %3$d artistes</string>
+    <string name="album_by">Album · %1$s</string>
 </resources>

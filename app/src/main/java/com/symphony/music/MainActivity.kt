@@ -178,11 +178,10 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
 
     Box(Modifier.fillMaxSize()) {
         NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
-            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openMenu) }
-            composable("albums") { AlbumsScreen(vm, openAlbum) }
-            composable("artists") { ArtistsScreen(vm, openArtist) }
-            composable("library") { LibraryScreen(vm, openPlaylist, openMenu, { nav.navigate("discover") }, { nav.navigate("podcasts") }) { nav.navigate("radio") } }
-            composable("search") { SearchScreen(vm, openAlbum, openArtist, openMenu) }
+            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum, { nav.openTab("music") }) { nav.openTab("online") } }
+            composable("music") { MusicScreen(vm, openAlbum, openArtist, openPlaylist, openMenu) }
+            composable("online") { OnlineScreen(vm, { nav.navigate("radio") }, { nav.navigate("podcasts") }, { nav.navigate("podcast/$it") }) { nav.navigate("discover") } }
+            composable("search") { SearchScreen(vm, openAlbum, openArtist, { nav.navigate("podcast/$it") }, openMenu) }
             composable("podcasts") { PodcastsScreen(vm, { nav.popBackStack() }) { nav.navigate("podcast/$it") } }
             composable("podcast/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 PodcastScreen(vm, e.arguments?.getLong("id") ?: 0L) { nav.popBackStack() }
@@ -206,7 +205,8 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
         FloatingBar(
             state = state,
             glass = settings.liquidGlass,
-            route = route,
+            // Pages opened from "En ligne" keep that tab lit.
+            route = if (route == "radio" || route == "podcasts" || route == "discover" || route == "podcast/{id}") "online" else route,
             onTab = { nav.openTab(it) },
             onSearch = { nav.openTab("search") },
             onOpenPlayer = { playerOpen = true },

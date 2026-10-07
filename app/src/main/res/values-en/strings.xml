@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tab_home">Songs</string>
+    <string name="tab_home">Home</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_artists">Artists</string>
     <string name="tab_library">Library</string>
@@ -136,4 +136,25 @@
     <string name="discover_note">Deezer catalogue. Tap a result for a 30-second preview; the arrow opens the song in Deezer.</string>
     <string name="preview">Preview</string>
     <string name="open_in_deezer">Open in Deezer</string>
+    <string name="tab_music">Music</string>
+    <string name="tab_online">Online</string>
+    <string name="online_sub">Uses your Internet connection</string>
+    <string name="play_all">Play all</string>
+    <string name="home_resume">Resume</string>
+    <string name="home_now">Now playing</string>
+    <string name="favorite_radios">Favourite radios</string>
+    <string name="latest_albums">Latest albums</string>
+    <string name="see_all">See all</string>
+    <string name="all_stations">All stations</string>
+    <string name="find_show">Find a show</string>
+    <string name="downloads_offline">Episodes available offline: %1$d</string>
+    <string name="my_music">My music</string>
+    <string name="catalogue">Catalogue</string>
+    <string name="preview_tag">PREVIEW</string>
+    <string name="live_tag">LIVE</string>
+    <string name="search_all_hint">Music, radios, podcasts</string>
+    <string name="search_all_title">Search everywhere</string>
+    <string name="search_all_text">Your music, radios, podcasts and the catalogue, in one field.</string>
+    <string name="library_summary">%1$d songs · %2$d albums · %3$d artists</string>
+    <string name="album_by">Album · %1$s</string>
 </resources>
