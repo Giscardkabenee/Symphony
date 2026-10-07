@@ -191,7 +191,8 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             }
         }
 
-        CompositionLocalProvider(LocalHaze provides hazeState) {
+        // Settings is a full page of its own: no player bar, no tabs.
+        if (route != "settings") CompositionLocalProvider(LocalHaze provides hazeState) {
         FloatingBar(
             state = state,
             glass = settings.liquidGlass,

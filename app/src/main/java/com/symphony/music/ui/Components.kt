@@ -249,37 +249,67 @@ fun Modifier.liquidDrop(shape: Shape, tint: Color = Color.White.copy(alpha = 0.1
             shape,
         )
 
-/** Floating surface: blurred, refracting glass with droplet lighting when glass is on, opaque otherwise. */
+/**
+ * Floating glass: the content behind is blurred, then lit like a pane of glass. A wash of the
+ * playing cover's colour, a sheen from the top, a bright rim that catches the light on two
+ * corners, and a faint shade along the bottom. Opaque when glass is off.
+ */
 @Composable
 fun GlassBox(
     glass: Boolean,
     shape: Shape,
     modifier: Modifier = Modifier,
+    accent: Color? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val haze = LocalHaze.current
     val backdrop = scheme.background
-    val glassTint = scheme.surfaceContainerHigh.copy(alpha = 0.34f)
-    val base = modifier.shadow(if (glass) 0.dp else 8.dp, shape).clip(shape)
+    val glassTint = scheme.surfaceContainerHigh.copy(alpha = 0.26f)
+    val glow by animateColorAsState(accent ?: Color.Transparent, tween(700), label = "glow")
+    val base = modifier.clip(shape)
     val surface = when {
         glass && haze != null -> base.hazeEffect(state = haze) {
             blurEnabled = true
-            blurRadius = 26.dp
+            blurRadius = 30.dp
             backgroundColor = backdrop
             tints = listOf(HazeTint(glassTint))
-            noiseFactor = 0.03f
+            noiseFactor = 0.05f
         }
-        glass -> base.background(scheme.surfaceContainerHigh.copy(alpha = 0.82f))
+        glass -> base.background(scheme.surfaceContainerHigh.copy(alpha = 0.8f))
         else -> base.background(scheme.surfaceContainerHigh)
     }
+    val lit = if (glass) {
+        Modifier.drawBehind {
+            if (size.width <= 0f || size.height <= 0f) return@drawBehind
+            // Colour of the music, stronger at the two ends.
+            drawRect(
+                Brush.horizontalGradient(
+                    0f to glow.copy(alpha = glow.alpha * 0.42f),
+                    0.5f to glow.copy(alpha = glow.alpha * 0.12f),
+                    1f to glow.copy(alpha = glow.alpha * 0.32f),
+                )
+            )
+            // Light falling on the top half.
+            drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.20f), 0.5f to Color.White.copy(alpha = 0.03f), 1f to Color.Transparent))
+            // Thickness of the glass along the bottom.
+            drawRect(Brush.verticalGradient(0.7f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.18f)))
+        }
+    } else {
+        Modifier
+    }
     val edge: Brush = if (glass) {
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.24f)))
+        Brush.linearGradient(
+            0f to Color.White.copy(alpha = 0.75f),
+            0.3f to Color.White.copy(alpha = 0.14f),
+            0.7f to Color.White.copy(alpha = 0.10f),
+            1f to Color.White.copy(alpha = 0.5f),
+        )
     } else {
         SolidColor(scheme.outlineVariant)
     }
     Box(
-        modifier = surface.then(if (glass) Modifier.dropletShine() else Modifier).border(1.dp, edge, shape),
+        modifier = surface.then(lit).border(1.2.dp, edge, shape),
         content = content,
     )
 }
@@ -316,6 +346,11 @@ fun FloatingBar(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         val song = state.current
+        // The glass takes a wash of the playing cover's colour.
+        val context = LocalContext.current
+        val accent by produceState<Color?>(null, song?.albumId) {
+            value = song?.let { dominantColor(context, it.artUri) }
+        }
         val pill: Shape = if (classic) RoundedCornerShape(18.dp) else CircleShape
         val useGlass = glass && !classic
         AnimatedVisibility(
@@ -323,7 +358,7 @@ fun FloatingBar(
             enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 },
             exit = fadeOut(tween(200)),
         ) {
-            if (song != null) GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(60.dp)) {
+            if (song != null) GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(60.dp), accent) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
@@ -363,7 +398,7 @@ fun FloatingBar(
             }
         }
         // One island: the current destination stretches into a labelled pill, the others stay icons.
-        GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(66.dp)) {
+        GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(66.dp), accent) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
