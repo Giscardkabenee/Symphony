@@ -256,7 +256,7 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) ->
                         Text(now.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Soft)
                     }
                     Box(
-                        modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.16f)).clickable { onMore(now) },
+                        modifier = Modifier.size(44.dp).liquidDrop(CircleShape).clickable { onMore(now) },
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.more))
@@ -393,7 +393,7 @@ private fun Controls(
             }
             Spacer(Modifier.width(12.dp))
             Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.16f)).clickable(onClick = onMore),
+                modifier = Modifier.size(44.dp).liquidDrop(CircleShape).clickable(onClick = onMore),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.more))
@@ -484,9 +484,7 @@ private fun Controls(
                 .fillMaxWidth()
                 .padding(top = 12.dp)
                 .height(58.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.10f))
-                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape)
+                .liquidDrop(CircleShape, Color.White.copy(alpha = 0.10f))
                 .padding(horizontal = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,

@@ -46,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +73,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.symphony.music.data.AppSettings
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import com.symphony.music.data.Song
 import com.symphony.music.ui.AlbumScreen
 import com.symphony.music.ui.AlbumsScreen
@@ -80,6 +83,7 @@ import com.symphony.music.ui.ArtistsScreen
 import com.symphony.music.ui.FloatingBar
 import com.symphony.music.ui.HomeScreen
 import com.symphony.music.ui.LibraryScreen
+import com.symphony.music.ui.LocalHaze
 import com.symphony.music.ui.NewPlaylistDialog
 import com.symphony.music.ui.NowPlaying
 import com.symphony.music.ui.PlaylistScreen
@@ -160,6 +164,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     var playerOpen by rememberSaveable { mutableStateOf(false) }
+    val hazeState = remember { HazeState() }
     var menuSong by remember { mutableStateOf<Song?>(null) }
 
     val openAlbum: (Long) -> Unit = { nav.navigate("album/$it") }
@@ -168,7 +173,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
     val openMenu: (Song) -> Unit = { menuSong = it }
 
     Box(Modifier.fillMaxSize()) {
-        NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize()) {
+        NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
             composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openAlbum, openMenu) }
             composable("albums") { AlbumsScreen(vm, openAlbum) }
             composable("artists") { ArtistsScreen(vm, openArtist) }
@@ -186,6 +191,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             }
         }
 
+        CompositionLocalProvider(LocalHaze provides hazeState) {
         FloatingBar(
             state = state,
             glass = settings.liquidGlass,
@@ -199,6 +205,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             hideLabels = settings.hideLabels,
             classic = settings.classicBar,
         )
+        }
 
         AnimatedVisibility(
             visible = playerOpen && state.current != null,

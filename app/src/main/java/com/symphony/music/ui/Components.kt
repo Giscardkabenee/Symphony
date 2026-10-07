@@ -3,7 +3,10 @@ package com.symphony.music.ui
 import android.content.Context
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +17,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,9 +50,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -64,6 +73,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.symphony.music.PlayerState
@@ -194,7 +206,47 @@ fun SongRow(
     }
 }
 
-/** Floating surface: translucent with a light top edge when glass is on, opaque otherwise. */
+/** Shared blur source: the screen content that glass surfaces blur and refract. */
+val LocalHaze = staticCompositionLocalOf<HazeState?> { null }
+
+/**
+ * Water-drop lighting: a soft sheen from the top, a bright spot where light enters,
+ * a faint glow where it leaves at the bottom edge, and a shadow under the curve.
+ */
+fun Modifier.dropletShine(strength: Float = 1f): Modifier = drawBehind {
+    val w = size.width
+    val h = size.height
+    if (w <= 0f || h <= 0f) return@drawBehind
+    drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.20f * strength), 0.55f to Color.Transparent))
+    drawRect(
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.34f * strength), Color.Transparent),
+            center = Offset(w * 0.2f, 0f),
+            radius = h * 1.1f,
+        )
+    )
+    drawRect(
+        Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.18f * strength), Color.Transparent),
+            center = Offset(w * 0.82f, h),
+            radius = h * 0.9f,
+        )
+    )
+    drawRect(Brush.verticalGradient(0.62f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.18f * strength)))
+}
+
+/** A small glass drop: translucent fill, droplet lighting and a bright rim. */
+fun Modifier.liquidDrop(shape: Shape, tint: Color = Color.White.copy(alpha = 0.12f)): Modifier =
+    this.clip(shape)
+        .background(tint)
+        .dropletShine()
+        .border(
+            1.dp,
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.22f))),
+            shape,
+        )
+
+/** Floating surface: blurred, refracting glass with droplet lighting when glass is on, opaque otherwise. */
 @Composable
 fun GlassBox(
     glass: Boolean,
@@ -203,18 +255,27 @@ fun GlassBox(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val fill = if (glass) scheme.surfaceContainerHigh.copy(alpha = 0.82f) else scheme.surfaceContainerHigh
+    val haze = LocalHaze.current
+    val backdrop = scheme.background
+    val glassTint = scheme.surfaceContainerHigh.copy(alpha = 0.42f)
+    val base = modifier.shadow(if (glass) 0.dp else 8.dp, shape).clip(shape)
+    val surface = when {
+        glass && haze != null -> base.hazeEffect(state = haze) {
+            blurRadius = 26.dp
+            backgroundColor = backdrop
+            tints = listOf(HazeTint(glassTint))
+            noiseFactor = 0.03f
+        }
+        glass -> base.background(scheme.surfaceContainerHigh.copy(alpha = 0.82f))
+        else -> base.background(scheme.surfaceContainerHigh)
+    }
     val edge: Brush = if (glass) {
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.4f), Color.White.copy(alpha = 0.06f)))
+        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.24f)))
     } else {
         SolidColor(scheme.outlineVariant)
     }
     Box(
-        modifier = modifier
-            .shadow(if (glass) 0.dp else 8.dp, shape)
-            .clip(shape)
-            .background(fill)
-            .border(1.dp, edge, shape),
+        modifier = surface.then(if (glass) Modifier.dropletShine() else Modifier).border(1.dp, edge, shape),
         content = content,
     )
 }
@@ -299,34 +360,47 @@ fun FloatingBar(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassBox(useGlass, pill, Modifier.weight(1f).height(64.dp)) {
-                Row(Modifier.fillMaxSize().padding(5.dp)) {
-                    tabs.forEach { tab ->
-                        val selected = route == tab.route
-                        val tint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                        val tabFill by animateColorAsState(
-                            targetValue = if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f) else Color.Transparent,
-                            animationSpec = tween(250),
-                            label = "tab",
-                        )
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(pill)
-                                .background(tabFill)
-                                .clickable { onTab(tab.route) },
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(tab.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = tint)
-                            if (!hideLabels) Text(
-                                text = stringResource(tab.label),
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                color = tint,
-                            )
+                BoxWithConstraints(Modifier.fillMaxSize().padding(5.dp)) {
+                    // A glass drop slides under the selected tab and settles with a small bounce.
+                    val slot = maxWidth / tabs.size
+                    val index = tabs.indexOfFirst { it.route == route }
+                    val dropX by animateDpAsState(
+                        targetValue = slot * index.coerceAtLeast(0),
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
+                        label = "drop",
+                    )
+                    val dropAlpha by animateFloatAsState(if (index >= 0) 1f else 0f, tween(200), label = "dropAlpha")
+                    Box(
+                        Modifier
+                            .offset(x = dropX)
+                            .width(slot)
+                            .fillMaxHeight()
+                            .alpha(dropAlpha)
+                            .liquidDrop(pill, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f))
+                    )
+                    Row(Modifier.fillMaxSize()) {
+                        tabs.forEach { tab ->
+                            val selected = route == tab.route
+                            val tint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(pill)
+                                    .clickable { onTab(tab.route) },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Icon(tab.icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = tint)
+                                if (!hideLabels) Text(
+                                    text = stringResource(tab.label),
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = tint,
+                                )
+                            }
                         }
                     }
                 }
