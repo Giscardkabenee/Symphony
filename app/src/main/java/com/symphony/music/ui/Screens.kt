@@ -99,6 +99,35 @@ const val FAVORITES_KEY = "__favorites__"
 const val RECENT_KEY = "__recent__"
 const val ADDED_KEY = "__added__"
 const val MOST_KEY = "__most__"
+const val MIX_DAY = "__mix_day__"
+const val MIX_WEEK = "__mix_week__"
+const val MIX_MONTH = "__mix_month__"
+val MIX_KEYS = listOf(MIX_DAY, MIX_WEEK, MIX_MONTH)
+
+/**
+ * A mix drawn from favourites, most played, never played and the rest of the library. It is the same
+ * all day (or week, or month) and changes with the next one; the week and month mixes are longer
+ * and lean more on what you listen to most.
+ */
+fun buildMix(key: String, all: List<Song>, favorites: List<Song>, most: List<Song>, counts: Map<Long, Int>): List<Song> {
+    if (all.isEmpty()) return emptyList()
+    val cal = java.util.Calendar.getInstance()
+    val year = cal.get(java.util.Calendar.YEAR)
+    val (seed, size) = when (key) {
+        MIX_WEEK -> (year * 100L + cal.get(java.util.Calendar.WEEK_OF_YEAR)) * 31 to 40
+        MIX_MONTH -> (year * 100L + cal.get(java.util.Calendar.MONTH)) * 97 to 60
+        else -> (year * 1000L + cal.get(java.util.Calendar.DAY_OF_YEAR)) * 7919 to 25
+    }
+    val r = java.util.Random(seed)
+    val forgotten = all.filter { (counts[it.id] ?: 0) == 0 }
+    val pool = when (key) {
+        MIX_WEEK -> most.take(30).shuffled(r).take(16) + favorites.shuffled(r).take(12) + forgotten.shuffled(r).take(8) + all.shuffled(r).take(24)
+        MIX_MONTH -> favorites.shuffled(r).take(20) + most.take(50).shuffled(r).take(20) + forgotten.shuffled(r).take(15) + all.shuffled(r).take(40)
+        else -> favorites.shuffled(r).take(8) + most.take(20).shuffled(r).take(8) + all.shuffled(r).take(20)
+    }
+    return pool.distinctBy { it.id }.take(size).shuffled(r)
+}
+
 /** Playlist key for the songs of one decade: "__era_1990". */
 const val ERA_PREFIX = "__era_"
 
@@ -667,9 +696,10 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     val isFavorites = name == FAVORITES_KEY
     // Lists the app builds by itself; nothing can be removed from them by hand.
     val era = if (name.startsWith(ERA_PREFIX)) name.removePrefix(ERA_PREFIX).toIntOrNull() else null
-    val smart = name == RECENT_KEY || name == ADDED_KEY || name == MOST_KEY || era != null
+    val smart = name == RECENT_KEY || name == ADDED_KEY || name == MOST_KEY || era != null || name in MIX_KEYS
     val songs = remember(name, settings, allSongs) {
-        if (era != null) allSongs.filter { it.year in 1900..2100 && it.year / 10 * 10 == era }.sortedWith(compareBy({ it.year }, { it.title.lowercase() }))
+        if (name in MIX_KEYS) buildMix(name, allSongs, vm.songsFor(settings.favorites), vm.songsFor(mostPlayedIds(settings.playCounts)), settings.playCounts)
+        else if (era != null) allSongs.filter { it.year in 1900..2100 && it.year / 10 * 10 == era }.sortedWith(compareBy({ it.year }, { it.title.lowercase() }))
         else when (name) {
             RECENT_KEY -> vm.songsFor(settings.recents)
             ADDED_KEY -> allSongs.sortedByDescending { it.dateAdded }.take(50)
@@ -679,6 +709,9 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
         }
     }
     val title = if (era != null) stringResource(R.string.era_label, era % 100) else when (name) {
+        MIX_DAY -> stringResource(R.string.daily_mix)
+        MIX_WEEK -> stringResource(R.string.weekly_mix)
+        MIX_MONTH -> stringResource(R.string.monthly_mix)
         RECENT_KEY -> stringResource(R.string.recently_played)
         ADDED_KEY -> stringResource(R.string.recently_added)
         MOST_KEY -> stringResource(R.string.most_played)

@@ -358,4 +358,7 @@
         <item quantity="one">%d new song added</item>
         <item quantity="other">%d new songs added</item>
     </plurals>
+    <string name="weekly_mix">Mix of the week</string>
+    <string name="monthly_mix">Mix of the month</string>
+    <string name="your_mixes">Your mixes</string>
 </resources>

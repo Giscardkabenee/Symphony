@@ -284,11 +284,8 @@ fun HomeScreen(
     val topArtist = if (settings.playCounts.isEmpty()) null else topArtists.firstOrNull()?.name
     val day = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) }
     // 25 songs drawn from favourites, most played and the rest, in an order that changes every day.
-    val dailyMix = remember(songs, settings.favorites, settings.playCounts, day) {
-        val random = java.util.Random(day.toLong() * 7919)
-        val pool = (favorites.shuffled(random).take(8) + most.take(20).shuffled(random).take(8) + songs.shuffled(random).take(20))
-            .distinctBy { it.id }
-        pool.take(25).shuffled(random)
+    val mixes = remember(songs, settings.favorites, settings.playCounts, day) {
+        MIX_KEYS.map { key -> key to buildMix(key, songs, favorites, most, settings.playCounts) }
     }
     // Never played first, then the least played; five of them, different each day.
     val rediscover = remember(songs, settings.playCounts, day) {
@@ -394,44 +391,63 @@ fun HomeScreen(
                 }
             }
         }
-        // ---- Mix of the day: favourites, most played and forgotten songs, new every day.
-        if (dailyMix.isNotEmpty()) {
-            item { SectionHeader(stringResource(R.string.daily_mix)) }
+        // ---- Mixes of the day, the week and the month: a card opens the list, the round button plays it.
+        if (mixes.any { it.second.isNotEmpty() }) {
+            item { SectionHeader(stringResource(R.string.your_mixes)) }
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFF1E1B4B), Color(0xFF6D28D9), Color(0xFFDB2777))))
-                        .clickable { vm.play(dailyMix, 0) }
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Four covers as a collage.
-                    Column(Modifier.size(92.dp).clip(RoundedCornerShape(16.dp))) {
-                        val covers = dailyMix.distinctBy { it.albumId }.take(4)
-                        for (r in 0..1) Row(Modifier.weight(1f)) {
-                            for (c in 0..1) {
-                                val song = covers.getOrNull(r * 2 + c) ?: covers.firstOrNull()
-                                if (song != null) Artwork(song.albumId, song.album, Modifier.weight(1f).fillMaxHeight(), RectangleShape)
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(mixes.size) { i ->
+                        val (key, mix) = mixes[i]
+                        val colors = when (key) {
+                            MIX_WEEK -> listOf(Color(0xFF042F2E), Color(0xFF0F766E), Color(0xFF0EA5E9))
+                            MIX_MONTH -> listOf(Color(0xFF431407), Color(0xFFC2410C), Color(0xFFF59E0B))
+                            else -> listOf(Color(0xFF1E1B4B), Color(0xFF6D28D9), Color(0xFFDB2777))
+                        }
+                        val label = stringResource(
+                            when (key) {
+                                MIX_WEEK -> R.string.weekly_mix
+                                MIX_MONTH -> R.string.monthly_mix
+                                else -> R.string.daily_mix
+                            }
+                        )
+                        Row(
+                            modifier = Modifier
+                                .width(300.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Brush.linearGradient(colors))
+                                .clickable { onStack(key) }
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            // Four covers as a collage.
+                            Column(Modifier.size(84.dp).clip(RoundedCornerShape(16.dp))) {
+                                val covers = mix.distinctBy { it.albumId }.take(4)
+                                for (r in 0..1) Row(Modifier.weight(1f)) {
+                                    for (c in 0..1) {
+                                        val song = covers.getOrNull(r * 2 + c) ?: covers.firstOrNull()
+                                        if (song != null) Artwork(song.albumId, song.album, Modifier.weight(1f).fillMaxHeight(), RectangleShape)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(label, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
+                                Text(
+                                    text = mix.map { it.artist }.distinct().take(3).joinToString(", "),
+                                    color = Color.White.copy(alpha = 0.75f),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontSize = 13.sp,
+                                )
+                                Text(stringResource(R.string.songs_count, mix.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                            }
+                            Box(
+                                Modifier.size(44.dp).clip(CircleShape).background(Color.White).clickable { vm.play(mix, 0) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.play), tint = Color.Black)
                             }
                         }
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.daily_mix), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
-                        Text(
-                            text = dailyMix.take(3).joinToString(", ") { it.artist },
-                            color = Color.White.copy(alpha = 0.75f),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            fontSize = 13.sp,
-                        )
-                        Text(stringResource(R.string.songs_count, dailyMix.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
-                    }
-                    Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.play), tint = Color.Black)
                     }
                 }
             }
