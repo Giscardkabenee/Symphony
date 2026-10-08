@@ -174,4 +174,7 @@
     <string name="sleep_at_end">La musique s\'arrête à la fin du titre</string>
     <string name="sleep_hint">La musique baisse doucement puis s\'arrête.</string>
     <string name="reorder">Déplacer</string>
+    <string name="wifi_only">Téléchargements en Wi-Fi seulement</string>
+    <string name="wifi_only_desc">Les épisodes de podcast ne se téléchargent pas avec les données mobiles</string>
+    <string name="wifi_required">Connectez-vous au Wi-Fi pour télécharger (réglage « Wi-Fi seulement »)</string>
 </resources>

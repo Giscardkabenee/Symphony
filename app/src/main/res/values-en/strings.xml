@@ -173,4 +173,7 @@
     <string name="sleep_at_end">Music stops at the end of the song</string>
     <string name="sleep_hint">The music fades out, then stops.</string>
     <string name="reorder">Move</string>
+    <string name="wifi_only">Download on Wi-Fi only</string>
+    <string name="wifi_only_desc">Podcast episodes are never downloaded over mobile data</string>
+    <string name="wifi_required">Connect to Wi-Fi to download (Wi-Fi only setting)</string>
 </resources>

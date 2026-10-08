@@ -336,7 +336,22 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     val downloadProgress: StateFlow<Map<Long, Int>> = Downloads.progress
 
-    fun downloadEpisode(podcast: Podcast, episode: Episode) = Downloads.start(getApplication(), prefs, podcast, episode)
+    fun downloadEpisode(podcast: Podcast, episode: Episode) {
+        val app = getApplication<Application>()
+        // With "Wi-Fi only" on, nothing is fetched over mobile data.
+        if (settings.value.wifiOnly && !onWifi(app)) {
+            android.widget.Toast.makeText(app, R.string.wifi_required, android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        Downloads.start(app, prefs, podcast, episode)
+    }
+
+    private fun onWifi(app: Application): Boolean {
+        val manager = app.getSystemService(android.net.ConnectivityManager::class.java) ?: return false
+        val caps = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
+        return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
+    }
 
     fun deleteDownload(id: Long) = Downloads.delete(getApplication(), prefs, id)
 

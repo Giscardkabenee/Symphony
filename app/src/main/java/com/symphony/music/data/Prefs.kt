@@ -29,6 +29,7 @@ object Flags {
     const val ARTIST_PHOTOS = "artist_photos"
     const val FLOAT_OUTPUT = "float_output"
     const val USB_DAC = "usb_dac"
+    const val WIFI_ONLY = "wifi_only_downloads"
 }
 
 /** Number of bands the equalizer screen offers. */
@@ -53,6 +54,7 @@ data class AppSettings(
     val artistPhotos: Boolean = true,
     val floatOutput: Boolean = false,
     val usbDac: Boolean = false,
+    val wifiOnly: Boolean = false,
     val favorites: List<Long> = emptyList(),
     val recents: List<Long> = emptyList(),
     /** Song id to number of times it was started. */
@@ -98,6 +100,7 @@ class Prefs(context: Context) {
             artistPhotos = p[booleanPreferencesKey(Flags.ARTIST_PHOTOS)] ?: true,
             floatOutput = p[booleanPreferencesKey(Flags.FLOAT_OUTPUT)] ?: false,
             usbDac = p[booleanPreferencesKey(Flags.USB_DAC)] ?: false,
+            wifiOnly = p[booleanPreferencesKey(Flags.WIFI_ONLY)] ?: false,
             favorites = decodeIds(p[FAVORITES]),
             recents = decodeIds(p[RECENTS]),
             playCounts = decodeCounts(p[PLAY_COUNTS]),
