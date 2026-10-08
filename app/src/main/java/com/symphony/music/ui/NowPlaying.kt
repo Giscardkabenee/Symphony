@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -598,6 +599,12 @@ private fun Controls(
                 active = favorite,
             ) { vm.toggleFavorite(song.id) }
             ToggleIcon(Icons.Rounded.QueueMusic, stringResource(R.string.queue), mode == MODE_QUEUE) { onMode(MODE_QUEUE) }
+            // Sleep timer: lit while it runs.
+            val sleepLeft = rememberSleepLeft()
+            val sleepEnd by com.symphony.music.playback.SleepTimer.endOfTrack.collectAsState()
+            var sleepOpen by remember { mutableStateOf(false) }
+            ToggleIcon(Icons.Rounded.Bedtime, stringResource(R.string.sleep_timer), sleepLeft > 0L || sleepEnd) { sleepOpen = true }
+            if (sleepOpen) SleepSheet { sleepOpen = false }
         }
     }
 }

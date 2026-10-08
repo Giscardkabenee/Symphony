@@ -166,4 +166,11 @@
     <string name="eq_system">Effets audio du téléphone</string>
     <string name="eq_on">Activé</string>
     <string name="eq_off">Désactivé</string>
+    <string name="sleep_timer">Minuterie de sommeil</string>
+    <string name="sleep_minutes">%1$d minutes</string>
+    <string name="sleep_end_track">À la fin du titre</string>
+    <string name="sleep_off">Désactiver la minuterie</string>
+    <string name="sleep_left">La musique s\'arrête dans %1$s</string>
+    <string name="sleep_at_end">La musique s\'arrête à la fin du titre</string>
+    <string name="sleep_hint">La musique baisse doucement puis s\'arrête.</string>
 </resources>

@@ -165,4 +165,11 @@
     <string name="eq_system">Phone audio effects</string>
     <string name="eq_on">On</string>
     <string name="eq_off">Off</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_minutes">%1$d minutes</string>
+    <string name="sleep_end_track">End of song</string>
+    <string name="sleep_off">Turn off timer</string>
+    <string name="sleep_left">Music stops in %1$s</string>
+    <string name="sleep_at_end">Music stops at the end of the song</string>
+    <string name="sleep_hint">The music fades out, then stops.</string>
 </resources>

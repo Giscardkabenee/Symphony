@@ -70,6 +70,14 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
         exo = player
+        SleepTimer.player = player
+        player.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (!playWhenReady && reason == androidx.media3.common.Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
+                    SleepTimer.onTrackEnded()
+                }
+            }
+        })
         player.addAnalyticsListener(object : AnalyticsListener {
             override fun onAudioInputFormatChanged(
                 eventTime: AnalyticsListener.EventTime,
@@ -187,6 +195,8 @@ class PlaybackService : MediaSessionService() {
         scope.cancel()
         (getSystemService(AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(deviceCallback)
         exo = null
+        SleepTimer.cancel()
+        SleepTimer.player = null
         try {
             virtualizer?.release()
         } catch (e: Exception) {
