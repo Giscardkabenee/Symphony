@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.symphony.music.MainActivity
 import com.symphony.music.data.AppSettings
 import com.symphony.music.data.Prefs
+import com.symphony.music.widget.PlayerWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -71,7 +72,13 @@ class PlaybackService : MediaSessionService() {
             .build()
         exo = player
         SleepTimer.player = player
+        PlayerWidget.player = player
         player.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onEvents(player: androidx.media3.common.Player, events: androidx.media3.common.Player.Events) {
+                // Keep the home-screen widget in step with the player.
+                PlayerWidget.refresh(this@PlaybackService)
+            }
+
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (!playWhenReady && reason == androidx.media3.common.Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                     SleepTimer.onTrackEnded()
@@ -197,6 +204,8 @@ class PlaybackService : MediaSessionService() {
         exo = null
         SleepTimer.cancel()
         SleepTimer.player = null
+        PlayerWidget.player = null
+        PlayerWidget.refresh(this)
         try {
             virtualizer?.release()
         } catch (e: Exception) {

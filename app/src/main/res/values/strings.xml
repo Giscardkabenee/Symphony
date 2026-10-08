@@ -177,4 +177,7 @@
     <string name="wifi_only">Téléchargements en Wi-Fi seulement</string>
     <string name="wifi_only_desc">Les épisodes de podcast ne se téléchargent pas avec les données mobiles</string>
     <string name="wifi_required">Connectez-vous au Wi-Fi pour télécharger (réglage « Wi-Fi seulement »)</string>
+    <string name="widget_name">Symphony — lecteur</string>
+    <string name="widget_desc">Pochette et commandes de lecture</string>
+    <string name="widget_idle">Touchez pour ouvrir</string>
 </resources>

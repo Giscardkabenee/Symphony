@@ -176,4 +176,7 @@
     <string name="wifi_only">Download on Wi-Fi only</string>
     <string name="wifi_only_desc">Podcast episodes are never downloaded over mobile data</string>
     <string name="wifi_required">Connect to Wi-Fi to download (Wi-Fi only setting)</string>
+    <string name="widget_name">Symphony player</string>
+    <string name="widget_desc">Cover and playback controls</string>
+    <string name="widget_idle">Tap to open</string>
 </resources>
