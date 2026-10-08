@@ -310,7 +310,8 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                             }
                         }
                     }
-                    Box(
+                    // The closing handle only shows over the lyrics; the cover stays clean.
+                    if (mode == MODE_LYRICS) Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .statusBarsPadding()
