@@ -154,6 +154,18 @@ private fun PermissionScreen(onGrant: () -> Unit) {
 }
 
 private fun NavHostController.openTab(route: String) {
+    // A tab already in the stack (Home always is): go back to its root page instead of
+    // restoring the album or playlist that was open on top of it.
+    val inStack = try {
+        getBackStackEntry(route)
+        true
+    } catch (e: IllegalArgumentException) {
+        false
+    }
+    if (inStack) {
+        popBackStack(route, inclusive = false)
+        return
+    }
     navigate(route) {
         popUpTo("home") { saveState = true }
         launchSingleTop = true
