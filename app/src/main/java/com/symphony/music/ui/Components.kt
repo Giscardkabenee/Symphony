@@ -421,7 +421,7 @@ private val tabs = listOf(
     Tab("music", R.string.tab_music, Icons.Rounded.MusicNote),
 )
 
-/** Mini-player pill above the rounded tab bar, with the round search button beside it. */
+/** Mini-player card with a progress ring around play / pause, over a small centred island of three tabs. */
 @Composable
 fun FloatingBar(
     state: PlayerState,
@@ -436,134 +436,117 @@ fun FloatingBar(
     hideLabels: Boolean = false,
     classic: Boolean = false,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val song = state.current
-        // The glass takes a wash of the playing cover's colour.
-        val context = LocalContext.current
-        val accent by produceState<Color?>(null, song?.albumId) {
-            value = song?.let { dominantColor(context, it.artUri) }
-        }
-        val pill: Shape = if (classic) RoundedCornerShape(18.dp) else CircleShape
-        val useGlass = glass && !classic
         AnimatedVisibility(
             visible = song != null,
             enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 },
             exit = fadeOut(tween(200)),
         ) {
-            if (song != null) GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(60.dp), accent) {
+            if (song != null) {
+                val card = RoundedCornerShape(22.dp)
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .height(62.dp)
+                        .shadow(14.dp, card, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.18f))
+                        .clip(card)
+                        .background(scheme.surfaceContainerLowest.copy(alpha = 0.96f))
+                        .border(1.dp, scheme.outlineVariant.copy(alpha = 0.5f), card)
                         .clickable(onClick = onOpenPlayer)
-                        .padding(start = 10.dp, end = 6.dp),
+                        .padding(start = 9.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Artwork(song.albumId, song.album, Modifier.size(42.dp), RoundedCornerShape(10.dp))
+                    Artwork(song.albumId, song.album, Modifier.size(44.dp), RoundedCornerShape(11.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(
-                            text = song.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = song.artist,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = onToggle) {
-                        Icon(
-                            imageVector = if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = stringResource(if (state.isPlaying) R.string.pause else R.string.play),
-                            modifier = Modifier.size(28.dp),
-                        )
+                    // Play / pause inside a ring that fills as the song advances.
+                    val fraction = if (state.duration > 0) (state.position.toFloat() / state.duration).coerceIn(0f, 1f) else 0f
+                    val ring = scheme.onSurface
+                    val track = scheme.surfaceContainerHighest
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .clickable(onClickLabel = stringResource(if (state.isPlaying) R.string.pause else R.string.play), onClick = onToggle)
+                            .drawBehind {
+                                val stroke = 3.dp.toPx()
+                                val inset = stroke / 2 + 1.dp.toPx()
+                                val arcSize = androidx.compose.ui.geometry.Size(size.width - inset * 2, size.height - inset * 2)
+                                val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
+                                drawArc(track, 0f, 360f, false, topLeft, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                                drawArc(ring, -90f, 360f * fraction, false, topLeft, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(22.dp))
                     }
                     IconButton(onClick = onNext) {
-                        Icon(Icons.Rounded.SkipNext, stringResource(R.string.next), Modifier.size(28.dp))
+                        Icon(Icons.Rounded.SkipNext, stringResource(R.string.next), Modifier.size(26.dp))
                     }
                 }
             }
         }
-        // One island: the current destination stretches into a labelled pill, the others stay icons.
-        GlassBox(useGlass, pill, Modifier.fillMaxWidth().height(66.dp), accent) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                tabs.forEach { tab ->
-                    IslandItem(tab.icon, stringResource(tab.label), route == tab.route, !hideLabels, pill) { onTab(tab.route) }
-                }
-                IslandItem(Icons.Rounded.Search, stringResource(R.string.search), route == "search", !hideLabels, pill, onSearch)
+        // Small island in contrast with the page: dark in light theme, light in dark theme.
+        val island = CircleShape
+        Row(
+            modifier = Modifier
+                .height(58.dp)
+                .shadow(16.dp, island, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f))
+                .clip(island)
+                .background(scheme.inverseSurface)
+                .padding(horizontal = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            tabs.forEach { tab ->
+                IslandItem(tab.icon, stringResource(tab.label), route == tab.route) { onTab(tab.route) }
             }
+            IslandItem(Icons.Rounded.Search, stringResource(R.string.search), route == "search", onSearch)
         }
     }
 }
 
 @Composable
-private fun RowScope.IslandItem(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    showLabel: Boolean,
-    shape: Shape,
-    onClick: () -> Unit,
-) {
+private fun IslandItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val fill by animateColorAsState(if (selected) scheme.onSurface else Color.Transparent, tween(260), label = "fill")
-    val tint by animateColorAsState(if (selected) scheme.surface else scheme.onSurfaceVariant, tween(260), label = "tint")
+    val fill by animateColorAsState(if (selected) scheme.inverseOnSurface else Color.Transparent, tween(240), label = "fill")
+    val tint by animateColorAsState(if (selected) scheme.inverseSurface else scheme.inverseOnSurface.copy(alpha = 0.62f), tween(240), label = "tint")
     // Physical feel: the item sinks under the finger, springs back, and the phone gives a short tick.
     val view = LocalView.current
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val press by animateFloatAsState(
-        targetValue = if (pressed) 0.86f else 1f,
+        targetValue = if (pressed) 0.84f else 1f,
         animationSpec = spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium),
         label = "press",
     )
-    Row(
-        modifier = (if (selected) Modifier else Modifier.weight(1f))
-            .height(52.dp)
+    Box(
+        modifier = Modifier
+            .size(width = 64.dp, height = 44.dp)
             .graphicsLayer {
                 scaleX = press
                 scaleY = press
             }
-            .clip(shape)
+            .clip(CircleShape)
             .background(fill)
             .clickable(interactionSource = source, indication = LocalIndication.current, onClickLabel = label) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                 onClick()
-            }
-            .animateContentSize(spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
-            .padding(horizontal = if (selected) 18.dp else 0.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
+            },
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = if (selected && showLabel) null else label, modifier = Modifier.size(24.dp), tint = tint)
-        AnimatedVisibility(
-            visible = selected && showLabel,
-            enter = fadeIn(tween(220)) + expandHorizontally(tween(260)),
-            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(200)),
-        ) {
-            Text(
-                text = label,
-                modifier = Modifier.padding(start = 8.dp),
-                maxLines = 1,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = tint,
-            )
-        }
+        Icon(icon, contentDescription = label, modifier = Modifier.size(24.dp), tint = tint)
     }
 }
