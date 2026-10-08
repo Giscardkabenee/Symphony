@@ -16,11 +16,39 @@ import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.Charset
 
-data class LyricLine(val timeMs: Long, val text: String)
+/** One timed word (or syllable): when it starts and the text it adds. */
+data class LyricWord(val timeMs: Long, val text: String)
+
+/** A line, its start, and its words when the source times them one by one. */
+data class LyricLine(val timeMs: Long, val text: String, val words: List<LyricWord> = emptyList())
 
 data class LyricsData(val lines: List<LyricLine>, val synced: Boolean)
 
 private val timeTag = Regex("""\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]""")
+/** Word timing of "enhanced" LRC: <mm:ss.xx> before each word. */
+private val wordTag = Regex("""<(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?>""")
+
+private fun tagMillis(m: MatchResult): Long {
+    val fraction = m.groupValues[3]
+    val millis = when (fraction.length) {
+        0 -> 0L
+        1 -> fraction.toLong() * 100
+        2 -> fraction.toLong() * 10
+        else -> fraction.take(3).toLong()
+    }
+    return m.groupValues[1].toLong() * 60_000 + m.groupValues[2].toLong() * 1000 + millis
+}
+
+/** Splits "<00:01.20>Hel<00:01.45>lo" into timed pieces; empty when the line has no word tags. */
+private fun parseWords(content: String): List<LyricWord> {
+    val tags = wordTag.findAll(content).toList()
+    if (tags.isEmpty()) return emptyList()
+    return tags.mapIndexedNotNull { i, tag ->
+        val end = if (i + 1 < tags.size) tags[i + 1].range.first else content.length
+        val text = content.substring(tag.range.last + 1, end)
+        if (text.isEmpty()) null else LyricWord(tagMillis(tag), text)
+    }
+}
 
 /** Parses LRC text. Lines without time tags give plain, unsynced lyrics. */
 fun parseLyrics(raw: String): LyricsData? {
@@ -30,7 +58,9 @@ fun parseLyrics(raw: String): LyricsData? {
     for (line in text.split('\n')) {
         val tags = timeTag.findAll(line).toList()
         if (tags.isEmpty()) continue
-        val content = line.replace(timeTag, "").trim()
+        val raw = line.replace(timeTag, "")
+        val words = parseWords(raw)
+        val content = (if (words.isNotEmpty()) words.joinToString("") { it.text } else raw.replace(wordTag, "")).trim()
         for (tag in tags) {
             val minutes = tag.groupValues[1].toLong()
             val seconds = tag.groupValues[2].toLong()
@@ -41,7 +71,7 @@ fun parseLyrics(raw: String): LyricsData? {
                 2 -> fraction.toLong() * 10
                 else -> fraction.take(3).toLong()
             }
-            synced += LyricLine(minutes * 60_000 + seconds * 1000 + millis, content)
+            synced += LyricLine(minutes * 60_000 + seconds * 1000 + millis, content, words)
         }
     }
     if (synced.size >= 2) {
@@ -131,7 +161,7 @@ suspend fun loadOnlineLyrics(context: Context, song: Song): LyricsResult = withC
     } catch (e: Exception) {
         // Unreadable cache: fetch again.
     }
-    val sources: List<(Song) -> String?> = listOf(::fetchFromLrclib, ::fetchFromLyricsPlus, ::fetchFromKugou)
+    val sources: List<(Song) -> String?> = listOf(::fetchFromLyricsPlus, ::fetchFromLrclib, ::fetchFromKugou)
     var raw: String? = null
     var failure: String? = null
     var failures = 0
@@ -252,17 +282,25 @@ private fun fetchFromLyricsPlus(song: Song): String? {
         for (i in 0 until lines.length()) {
             val line = lines.optJSONObject(i) ?: continue
             var text = line.optString("text")
-            if (text.isBlank()) {
-                val parts = line.optJSONArray("syllabus")
-                if (parts != null) {
-                    val joined = StringBuilder()
-                    for (j in 0 until parts.length()) joined.append(parts.optJSONObject(j)?.optString("text") ?: "")
-                    text = joined.toString()
+            // Syllable timing, when given, becomes word tags so the sung part can light up.
+            val parts = line.optJSONArray("syllabus")
+            val timed = StringBuilder()
+            if (parts != null && parts.length() > 0) {
+                val joined = StringBuilder()
+                for (j in 0 until parts.length()) {
+                    val part = parts.optJSONObject(j) ?: continue
+                    val piece = part.optString("text")
+                    joined.append(piece)
+                    val t = part.optLong("time", -1L)
+                    if (t >= 0) timed.append("<%02d:%02d.%02d>".format(t / 60_000, t / 1000 % 60, t % 1000 / 10))
+                    timed.append(piece)
                 }
+                if (text.isBlank()) text = joined.toString()
             }
             if (text.isBlank()) continue
             val ms = line.optLong("time", 0L)
-            out.append("[%02d:%02d.%02d]".format(ms / 60_000, ms / 1000 % 60, ms % 1000 / 10)).append(text.trim()).append('\n')
+            out.append("[%02d:%02d.%02d]".format(ms / 60_000, ms / 1000 % 60, ms % 1000 / 10))
+                .append(if (timed.isNotBlank() && timed.contains('<')) timed.toString().trim() else text.trim()).append('\n')
         }
         if (out.isNotEmpty()) return out.toString()
     }

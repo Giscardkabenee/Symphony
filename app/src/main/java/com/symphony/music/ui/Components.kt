@@ -66,6 +66,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.scaleOut
@@ -196,6 +203,39 @@ fun Modifier.playerChip(): Modifier = this
     .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.12f))))
     .border(0.6.dp, Color.White.copy(alpha = 0.18f), CircleShape)
 
+/** Whether the player is playing right now, for the little animated bars in the lists. */
+val LocalIsPlaying = compositionLocalOf { false }
+
+/** Four bars that dance while the song plays and rest low when it is paused. */
+@Composable
+fun PlayingBars(playing: Boolean, color: Color, modifier: Modifier = Modifier) {
+    val dance = rememberInfiniteTransition(label = "bars")
+    val speeds = listOf(520, 380, 610, 450)
+    val heights = speeds.mapIndexed { i, ms ->
+        val h by dance.animateFloat(
+            initialValue = 0.25f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(ms, delayMillis = i * 60, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "bar$i",
+        )
+        h
+    }
+    val rest by animateFloatAsState(if (playing) 1f else 0f, tween(300), label = "rest")
+    androidx.compose.foundation.Canvas(modifier.size(width = 18.dp, height = 16.dp)) {
+        val w = size.width / 7f
+        heights.forEachIndexed { i, h ->
+            val level = 0.3f + (h - 0.3f) * rest
+            val barH = size.height * level.coerceIn(0.2f, 1f)
+            drawRoundRect(
+                color = color,
+                topLeft = androidx.compose.ui.geometry.Offset(i * 2 * w, size.height - barH),
+                size = androidx.compose.ui.geometry.Size(w, barH),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(w / 2, w / 2),
+            )
+        }
+    }
+}
+
 /** Only songs on the phone have options and a favourite state. */
 fun Song.hasOptions(): Boolean = id >= 0
 
@@ -317,7 +357,7 @@ fun SongRow(
             )
         }
         if (active) {
-            Icon(Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.padding(horizontal = 8.dp))
+            PlayingBars(LocalIsPlaying.current, LocalContentColor.current, Modifier.padding(horizontal = 10.dp))
         }
         if (song.duration > 0) {
             Text(

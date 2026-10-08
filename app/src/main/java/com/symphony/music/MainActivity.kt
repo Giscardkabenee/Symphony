@@ -171,6 +171,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
     val openMenu: (Song) -> Unit = { menuSong = it }
 
     Box(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(com.symphony.music.ui.LocalIsPlaying provides state.isPlaying) {
         NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
             composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum, openArtist) }
             composable("music") { MusicScreen(vm, openAlbum, openArtist, openPlaylist, openMenu) }
@@ -185,6 +186,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             composable("playlist/{name}") { e ->
                 PlaylistScreen(vm, e.arguments?.getString("name") ?: "", { nav.popBackStack() }, openMenu)
             }
+        }
         }
 
         // Settings is a full page of its own: no player bar, no tabs.

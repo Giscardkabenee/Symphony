@@ -65,6 +65,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import com.symphony.music.data.LyricLine
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -291,7 +300,7 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     Crossfade(targetState = mode, animationSpec = tween(320), modifier = Modifier.fillMaxSize(), label = "mode") { shown ->
                         when (shown) {
                             MODE_QUEUE -> QueueList(state, vm, onMore)
-                            MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics, lyricsStatus, lyricsError, { vm.retryLyrics() }) { vm.seekTo(it) }
+                            MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics, lyricsStatus, lyricsError, { vm.retryLyrics() }, state.position, state.isPlaying) { vm.seekTo(it) }
                             else -> Crossfade(targetState = song, animationSpec = tween(520), modifier = Modifier.fillMaxSize(), label = "song") { s ->
                                 Cover(s, settings.fullCover, if (settings.fullCover) 1f else coverScale, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
                             }
@@ -463,7 +472,7 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) ->
                         Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = Soft)
                     }
                     if (active) {
-                        Icon(Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.padding(horizontal = 12.dp))
+                        PlayingBars(state.isPlaying, Color.White, Modifier.padding(horizontal = 14.dp))
                     } else {
                         IconButton(onClick = { vm.removeFromQueue(entry.index) }) {
                             Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.remove), tint = Soft)
@@ -496,6 +505,8 @@ private fun LyricsView(
     status: Int,
     error: String,
     onRetry: () -> Unit,
+    positionMs: Long,
+    playing: Boolean,
     onSeek: (Long) -> Unit,
 ) {
     if (lyrics == null) {
@@ -526,29 +537,146 @@ private fun LyricsView(
         }
         return
     }
+    // A smooth clock between the player's half-second updates, so words light up on time.
+    var anchorPos by remember { mutableLongStateOf(positionMs) }
+    var anchorAt by remember { mutableLongStateOf(System.nanoTime()) }
+    LaunchedEffect(positionMs) {
+        anchorPos = positionMs
+        anchorAt = System.nanoTime()
+    }
+    val clock by produceState(positionMs, playing) {
+        while (true) {
+            withFrameNanos {
+                value = if (playing) anchorPos + ((System.nanoTime() - anchorAt) / 1_000_000).coerceAtMost(1500) else anchorPos
+            }
+        }
+    }
     val listState = rememberLazyListState()
     val follow = lyrics.synced && highlight
-    LaunchedEffect(activeLine, follow) {
-        if (follow && activeLine >= 0) listState.animateScrollToItem((activeLine - 2).coerceAtLeast(0))
+    val current = if (follow) currentLine(lyrics, clock) else -1
+    LaunchedEffect(current, follow) {
+        if (follow && current >= 0) listState.animateScrollToItem((current).coerceAtLeast(0))
     }
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(start = 28.dp, end = 28.dp, top = 52.dp, bottom = 160.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        contentPadding = PaddingValues(start = 26.dp, end = 26.dp, top = 120.dp, bottom = 260.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-        items(lyrics.lines.size) { i ->
+        // Before the first line: three dots breathing, as in a long instrumental intro.
+        if (follow && current < 0 && lyrics.lines.isNotEmpty()) {
+            item(key = "intro") { BreathingDots() }
+        }
+        items(lyrics.lines.size, key = { it }) { i ->
             val line = lyrics.lines[i]
-            val current = !follow || i == activeLine
-            var modifier: Modifier = Modifier.fillMaxWidth()
-            if (lyrics.synced) modifier = modifier.clickable { onSeek(line.timeMs) }
-            if (!current && blurOthers) modifier = modifier.blur(1.5.dp)
+            val isActive = follow && i == current
+            val past = follow && i < current
+            val alpha by animateFloatAsState(
+                targetValue = when {
+                    !follow || isActive -> 1f
+                    past -> 0.32f
+                    else -> 0.45f
+                },
+                animationSpec = tween(450),
+                label = "lineAlpha",
+            )
+            val scale by animateFloatAsState(
+                targetValue = if (!follow || isActive) 1f else 0.94f,
+                animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
+                label = "lineScale",
+            )
+            val distance = if (current < 0) 2 else kotlin.math.abs(i - current)
+            val blurred by animateDpAsState(
+                targetValue = if (follow && !isActive && blurOthers) (distance.coerceAtMost(3) * 1.1f).dp else 0.dp,
+                animationSpec = tween(450),
+                label = "lineBlur",
+            )
+            val nextStart = lyrics.lines.getOrNull(i + 1)?.timeMs ?: (line.timeMs + 5000)
             Text(
-                text = line.text,
-                modifier = modifier,
-                style = if (follow && current) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
-                fontWeight = if (follow && current) FontWeight.ExtraBold else FontWeight.Bold,
-                color = if (current) Color.White else Color.White.copy(alpha = 0.45f),
+                text = if (isActive) sungText(line, nextStart, clock) else AnnotatedString(line.text),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    }
+                    .blur(blurred)
+                    .then(if (lyrics.synced) Modifier.clickable { onSeek(line.timeMs) } else Modifier),
+                fontSize = if (lyrics.synced) 30.sp else 24.sp,
+                lineHeight = if (lyrics.synced) 37.sp else 31.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+            )
+        }
+    }
+}
+
+/**
+ * The active line: what has been sung is bright, the word being sung brightens as it goes, the rest
+ * waits dimmed. With word timing from the source this follows each word; otherwise it moves word by
+ * word across the line's length.
+ */
+private fun sungText(line: LyricLine, nextStart: Long, clock: Long): AnnotatedString {
+    val bright = Color.White
+    val dim = Color.White.copy(alpha = 0.42f)
+    // Pieces with their start and end times.
+    val pieces: List<Triple<String, Long, Long>> = if (line.words.isNotEmpty()) {
+        line.words.mapIndexed { i, w ->
+            val end = line.words.getOrNull(i + 1)?.timeMs ?: minOf(nextStart, w.timeMs + 1500)
+            Triple(w.text, w.timeMs, end)
+        }
+    } else {
+        // No word timing: spread the words over the line's time, weighted by length.
+        val words = Regex("""\S+\s*""").findAll(line.text).map { it.value }.toList()
+        val span = (nextStart - line.timeMs).coerceIn(800, 12_000)
+        val total = words.sumOf { it.length }.coerceAtLeast(1)
+        var t = line.timeMs.toDouble()
+        words.map { w ->
+            val d = span * w.length.toDouble() / total
+            val piece = Triple(w, t.toLong(), (t + d).toLong())
+            t += d
+            piece
+        }
+    }
+    return buildAnnotatedString {
+        var first = true
+        for ((text, start, end) in pieces) {
+            val shown = if (first) text.trimStart() else text
+            first = false
+            val color = when {
+                clock >= end -> bright
+                clock <= start -> dim
+                else -> lerp(dim, bright, ((clock - start).toFloat() / (end - start).coerceAtLeast(1)).coerceIn(0f, 1f))
+            }
+            withStyle(SpanStyle(color = color)) { append(shown) }
+        }
+    }
+}
+
+/** Three dots that swell in turn, while the music plays before the first words. */
+@Composable
+private fun BreathingDots() {
+    val beat = rememberInfiniteTransition(label = "dots")
+    Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        for (i in 0..2) {
+            val k by beat.animateFloat(
+                initialValue = 0.6f,
+                targetValue = 1.15f,
+                animationSpec = infiniteRepeatable(tween(700, delayMillis = i * 180, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                label = "dot$i",
+            )
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .graphicsLayer {
+                        scaleX = k
+                        scaleY = k
+                        alpha = 0.4f + 0.5f * (k - 0.6f) / 0.55f
+                    }
+                    .clip(CircleShape)
+                    .background(Color.White)
             )
         }
     }
