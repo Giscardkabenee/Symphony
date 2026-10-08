@@ -121,6 +121,12 @@ fun SymphonyApp(vm: PlayerViewModel = viewModel()) {
         }
     }
 
+    // Coming back to the app looks for songs downloaded in the meantime.
+    androidx.lifecycle.compose.LifecycleResumeEffect(granted) {
+        if (granted) vm.onResume()
+        onPauseOrDispose { }
+    }
+
     SymphonyTheme(settings.theme) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             if (granted) {

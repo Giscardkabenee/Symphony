@@ -354,4 +354,8 @@
         <item>Remember the sleep timer</item>
         <item>The world sleeps, the music doesn\'t</item>
     </string-array>
+    <plurals name="new_songs">
+        <item quantity="one">%d new song added</item>
+        <item quantity="other">%d new songs added</item>
+    </plurals>
 </resources>

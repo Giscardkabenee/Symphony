@@ -141,11 +141,74 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val filter = prefs.flow.first().filterShort
             val list = MusicRepository.loadSongs(getApplication(), filter)
+            val before = _songs.value.map { it.id }.toHashSet()
+            val wasLoaded = _loaded.value
             byId = list.associateBy { it.id }
             _songs.value = list
             _loaded.value = true
             sync()
+            // Tell when songs arrived while the app was open.
+            val fresh = list.count { it.id !in before }
+            if (wasLoaded && before.isNotEmpty() && fresh > 0) {
+                val app = getApplication<Application>()
+                val text = app.resources.getQuantityString(R.plurals.new_songs, fresh, fresh)
+                android.widget.Toast.makeText(app, text, android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
+    }
+
+    private var refreshJob: Job? = null
+
+    /** Several changes often arrive together (a download, then its tags): wait a moment, then reload once. */
+    private fun scheduleRefresh(delayMs: Long = 1200) {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            delay(delayMs)
+            if (_loaded.value) refresh()
+        }
+    }
+
+    /** The system's music library changed: a song was added, removed or edited. */
+    private val libraryWatcher = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            scheduleRefresh()
+        }
+    }
+
+    // Registered here, after the watcher above exists (init blocks run in the order they are written).
+    init {
+        getApplication<Application>().contentResolver.registerContentObserver(
+            android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, libraryWatcher,
+        )
+    }
+
+    /**
+     * Back in the app: recent audio files in Download and Music that the system has not indexed yet
+     * are handed to the media scanner (the watcher then reloads the library), and the list is checked.
+     */
+    fun onResume() {
+        if (!_loaded.value) return
+        val app = getApplication<Application>()
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val known = _songs.value.map { it.path }.toHashSet()
+                val types = setOf("mp3", "m4a", "flac", "ogg", "opus", "wav", "aac", "wma", "amr")
+                val recent = System.currentTimeMillis() - 14L * 24 * 3600 * 1000
+                val fresh = listOf(android.os.Environment.DIRECTORY_DOWNLOADS, android.os.Environment.DIRECTORY_MUSIC)
+                    .map { android.os.Environment.getExternalStoragePublicDirectory(it) }
+                    .flatMap { dir ->
+                        dir.walkTopDown().maxDepth(3)
+                            .filter { it.isFile && it.extension.lowercase() in types && it.lastModified() > recent && it.absolutePath !in known }
+                            .toList()
+                    }
+                if (fresh.isNotEmpty()) {
+                    android.media.MediaScannerConnection.scanFile(app, fresh.map { it.absolutePath }.toTypedArray(), null, null)
+                }
+            } catch (e: Exception) {
+                // Folders not readable: the system's own indexing still applies.
+            }
+        }
+        scheduleRefresh(300)
     }
 
     private fun sync() {
@@ -376,6 +439,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun songsFor(ids: List<Long>): List<Song> = ids.mapNotNull { byId[it] }
 
     override fun onCleared() {
+        getApplication<Application>().contentResolver.unregisterContentObserver(libraryWatcher)
         controller?.removeListener(listener)
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controller = null

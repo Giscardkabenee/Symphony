@@ -355,4 +355,8 @@
         <item>Pensez à la minuterie de sommeil</item>
         <item>Le monde dort, la musique non</item>
     </string-array>
+    <plurals name="new_songs">
+        <item quantity="one">%d nouvelle chanson ajoutée</item>
+        <item quantity="other">%d nouvelles chansons ajoutées</item>
+    </plurals>
 </resources>
