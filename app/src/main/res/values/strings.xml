@@ -227,4 +227,13 @@
     <string name="sort_short_added">Ajout récent</string>
     <string name="sort_short_modified">Modifié récemment</string>
     <string name="sort_short_duration">Durée</string>
+    <string name="daily_mix">Mix du jour</string>
+    <string name="rediscover">Redécouvrir</string>
+    <string name="by_era">Par époque</string>
+    <string name="era_label">Années %1$02d</string>
+    <string name="in_numbers">En chiffres</string>
+    <string name="stat_hours">de musique sur le téléphone</string>
+    <string name="stat_plays">écoutes au total</string>
+    <string name="stat_favorites">titres en favoris</string>
+    <string name="shuffle_everything">Mélanger toute ma musique</string>
 </resources>

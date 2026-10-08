@@ -226,4 +226,13 @@
     <string name="sort_short_added">Recently added</string>
     <string name="sort_short_modified">Recently modified</string>
     <string name="sort_short_duration">Duration</string>
+    <string name="daily_mix">Mix of the day</string>
+    <string name="rediscover">Rediscover</string>
+    <string name="by_era">By era</string>
+    <string name="era_label">The %1$02ds</string>
+    <string name="in_numbers">In numbers</string>
+    <string name="stat_hours">of music on this phone</string>
+    <string name="stat_plays">plays in total</string>
+    <string name="stat_favorites">favourite songs</string>
+    <string name="shuffle_everything">Shuffle all my music</string>
 </resources>

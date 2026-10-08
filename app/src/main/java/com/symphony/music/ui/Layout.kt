@@ -27,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
@@ -210,6 +211,8 @@ private fun GreetingHeader(titles: List<String>, lines: List<String>, onSettings
     }
 }
 
+private val eraColors = listOf(Color(0xFFB45309), Color(0xFF0F766E), Color(0xFF7C3AED), Color(0xFFBE123C), Color(0xFF1D4ED8), Color(0xFF15803D))
+
 /** One of the six shortcuts at the top of the home screen. */
 @Composable
 private fun QuickTile(title: String, modifier: Modifier, onClick: () -> Unit, art: @Composable () -> Unit) {
@@ -256,6 +259,24 @@ fun HomeScreen(
         artists.sortedWith(compareByDescending<com.symphony.music.data.ArtistInfo> { plays[it] ?: 0 }.thenByDescending { it.songs.size }).take(10)
     }
     val topArtist = if (settings.playCounts.isEmpty()) null else topArtists.firstOrNull()?.name
+    val day = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) }
+    // 25 songs drawn from favourites, most played and the rest, in an order that changes every day.
+    val dailyMix = remember(songs, settings.favorites, settings.playCounts, day) {
+        val random = java.util.Random(day.toLong() * 7919)
+        val pool = (favorites.shuffled(random).take(8) + most.take(20).shuffled(random).take(8) + songs.shuffled(random).take(20))
+            .distinctBy { it.id }
+        pool.take(25).shuffled(random)
+    }
+    // Never played first, then the least played; five of them, different each day.
+    val rediscover = remember(songs, settings.playCounts, day) {
+        val random = java.util.Random(day.toLong() * 104729)
+        songs.filter { (settings.playCounts[it.id] ?: 0) == 0 }.ifEmpty { songs.sortedBy { settings.playCounts[it.id] ?: 0 }.take(30) }
+            .shuffled(random).take(5)
+    }
+    // Songs grouped by decade, oldest first, only when the files carry a year.
+    val decades = remember(songs) {
+        songs.filter { it.year in 1900..2100 }.groupBy { it.year / 10 * 10 }.toSortedMap().map { it.key to it.value }
+    }
     val (greetings, taglines) = greeting(settings.userName, songs.size, topArtist)
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
@@ -333,6 +354,113 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
+        }
+        // ---- Mix of the day: favourites, most played and forgotten songs, new every day.
+        if (dailyMix.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.daily_mix)) }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFF1E1B4B), Color(0xFF6D28D9), Color(0xFFDB2777))))
+                        .clickable { vm.play(dailyMix, 0) }
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Four covers as a collage.
+                    Column(Modifier.size(92.dp).clip(RoundedCornerShape(16.dp))) {
+                        val covers = dailyMix.distinctBy { it.albumId }.take(4)
+                        for (r in 0..1) Row(Modifier.weight(1f)) {
+                            for (c in 0..1) {
+                                val song = covers.getOrNull(r * 2 + c) ?: covers.firstOrNull()
+                                if (song != null) Artwork(song.albumId, song.album, Modifier.weight(1f).fillMaxHeight(), RectangleShape)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.daily_mix), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                        Text(
+                            text = dailyMix.take(3).joinToString(", ") { it.artist },
+                            color = Color.White.copy(alpha = 0.75f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 13.sp,
+                        )
+                        Text(stringResource(R.string.songs_count, dailyMix.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                    }
+                    Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.play), tint = Color.Black)
+                    }
+                }
+            }
+        }
+        // ---- Songs you have never (or hardly) played.
+        if (rediscover.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.rediscover)) }
+            items(rediscover.size) { i ->
+                val song = rediscover[i]
+                SongRow(song, active = state.current?.id == song.id) { vm.play(rediscover, i) }
+            }
+        }
+        // ---- One tap per decade.
+        if (decades.size > 1) {
+            item { SectionHeader(stringResource(R.string.by_era)) }
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(decades.size) { i ->
+                        val (decade, list) = decades[i]
+                        val tint = eraColors[i % eraColors.size]
+                        Column(
+                            modifier = Modifier
+                                .width(128.dp)
+                                .height(84.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Brush.linearGradient(listOf(tint, lerp(tint, Color.Black, 0.45f))))
+                                .clickable { vm.play(list, 0, shuffle = true) }
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(stringResource(R.string.era_label, decade % 100), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                            Text(stringResource(R.string.songs_count, list.size), color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+        // ---- A few numbers about the library and listening.
+        item { SectionHeader(stringResource(R.string.in_numbers)) }
+        item {
+            val hours = songs.sumOf { it.duration } / 3_600_000.0
+            val plays = settings.playCounts.values.sum()
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(
+                    String.format(java.util.Locale.getDefault(), "%.1f h", hours) to stringResource(R.string.stat_hours),
+                    plays.toString() to stringResource(R.string.stat_plays),
+                    settings.favorites.size.toString() to stringResource(R.string.stat_favorites),
+                ).forEach { (value, label) ->
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceContainerLowest).padding(14.dp),
+                    ) {
+                        Text(value, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                    }
+                }
+            }
+        }
+        // ---- Shuffle everything.
+        item {
+            Button(
+                onClick = { vm.play(songs, 0, shuffle = true) },
+                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 22.dp).height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
+            ) {
+                Icon(Icons.Rounded.Shuffle, contentDescription = null)
+                Spacer(Modifier.width(10.dp))
+                Text(stringResource(R.string.shuffle_everything), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
