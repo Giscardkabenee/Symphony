@@ -426,11 +426,6 @@ private fun CoverHeader(
     onShuffle: () -> Unit,
     action: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val fallback = lerp(colorFor(label), Color.Black, 0.4f)
-    val found by produceState<Color?>(null, albumId) { value = dominantColor(context, artworkUri(albumId)) }
-    val band by animateColorAsState(found?.let { lerp(it, Color.Black, 0.45f) } ?: fallback, tween(500), label = "band")
-
     // White status-bar icons over the cover, whatever the theme; restored on leaving.
     val view = LocalView.current
     DisposableEffect(view) {
@@ -441,10 +436,8 @@ private fun CoverHeader(
         onDispose { if (before != null) controller?.isAppearanceLightStatusBars = before }
     }
 
-    BoxWithConstraints(Modifier.fillMaxWidth().clipToBounds().background(band)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().clipToBounds()) {
         val side = maxWidth
-        // Blurred copy of the cover, under everything (blur from Android 12).
-        Artwork(albumId, label, Modifier.fillMaxWidth().height(side).blur(48.dp), RectangleShape)
         // The sharp cover, dissolving over its lower third into the blurred copy.
         Artwork(
             albumId, label,
@@ -461,16 +454,10 @@ private fun CoverHeader(
                 },
             RectangleShape,
         )
-        // The album colour rises from the bottom of the cover and fills the band under it.
+        // A light shade under the status bar.
         Box(
             Modifier.fillMaxWidth().height(side).align(Alignment.TopCenter).background(
-                Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.28f),
-                    0.16f to Color.Transparent,
-                    0.62f to Color.Transparent,
-                    0.9f to band.copy(alpha = 0.85f),
-                    1f to band,
-                )
+                Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.28f), 0.16f to Color.Transparent)
             )
         )
         Column(Modifier.fillMaxWidth()) {
@@ -517,7 +504,44 @@ private fun CoverHeader(
             }
         }
     }
-    Spacer(Modifier.height(8.dp))
+}
+
+/**
+ * The page behind an album or playlist: its cover, heavily blurred and tinted with its own colour,
+ * stays in place while the header and the songs scroll over it, all in light text.
+ */
+@Composable
+private fun ImmersivePage(albumId: Long?, label: String, content: @Composable () -> Unit) {
+    if (albumId == null) {
+        content()
+        return
+    }
+    val context = LocalContext.current
+    val fallback = lerp(colorFor(label), Color.Black, 0.45f)
+    val found by produceState<Color?>(null, albumId) { value = dominantColor(context, artworkUri(albumId)) }
+    val band by animateColorAsState(found?.let { lerp(it, Color.Black, 0.5f) } ?: fallback, tween(500), label = "band")
+    val scheme = MaterialTheme.colorScheme.copy(
+        onSurface = Color.White,
+        onBackground = Color.White,
+        onSurfaceVariant = Color.White.copy(alpha = 0.72f),
+        surfaceContainerHigh = Color.White.copy(alpha = 0.14f),
+        surfaceContainerHighest = Color.White.copy(alpha = 0.18f),
+    )
+    Box(Modifier.fillMaxSize().background(band)) {
+        Artwork(albumId, label, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.2f; scaleY = 1.2f }.blur(90.dp), RectangleShape)
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to band.copy(alpha = 0.35f),
+                    0.45f to band.copy(alpha = 0.7f),
+                    1f to lerp(band, Color.Black, 0.55f).copy(alpha = 0.92f),
+                )
+            )
+        )
+        MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography) {
+            CompositionLocalProvider(LocalContentColor provides Color.White) { content() }
+        }
+    }
 }
 
 @Composable
@@ -536,6 +560,7 @@ fun AlbumScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit, onMore: (Song
         append(" · ").append(stringResource(R.string.songs_count, album.songs.size))
         append(" · ").append(minutes).append(" min")
     }
+    ImmersivePage(album.id, album.title) {
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item {
             DetailHeader(album.title, subtitle, album.id, album.title, onBack,
@@ -569,6 +594,7 @@ fun AlbumScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit, onMore: (Song
                 }
             }
         }
+    }
     }
 }
 
@@ -647,6 +673,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     }
     val view = LocalView.current
 
+    ImmersivePage(songs.firstOrNull()?.albumId, title) {
     LazyColumn(state = listState, contentPadding = PaddingValues(bottom = BarSpace)) {
         item(key = "header") {
             DetailHeader(title, subtitle, songs.firstOrNull()?.albumId, title, onBack,
@@ -693,6 +720,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
                 }
             }
         }
+    }
     }
 }
 
