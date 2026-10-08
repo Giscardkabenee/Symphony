@@ -99,6 +99,8 @@ const val FAVORITES_KEY = "__favorites__"
 const val RECENT_KEY = "__recent__"
 const val ADDED_KEY = "__added__"
 const val MOST_KEY = "__most__"
+/** Playlist key for the songs of one decade: "__era_1990". */
+const val ERA_PREFIX = "__era_"
 
 /** Room left at the bottom of every list for the floating bar. */
 internal val BarSpace = 210.dp
@@ -664,9 +666,11 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     val state by vm.state.collectAsStateWithLifecycle()
     val isFavorites = name == FAVORITES_KEY
     // Lists the app builds by itself; nothing can be removed from them by hand.
-    val smart = name == RECENT_KEY || name == ADDED_KEY || name == MOST_KEY
+    val era = if (name.startsWith(ERA_PREFIX)) name.removePrefix(ERA_PREFIX).toIntOrNull() else null
+    val smart = name == RECENT_KEY || name == ADDED_KEY || name == MOST_KEY || era != null
     val songs = remember(name, settings, allSongs) {
-        when (name) {
+        if (era != null) allSongs.filter { it.year in 1900..2100 && it.year / 10 * 10 == era }.sortedWith(compareBy({ it.year }, { it.title.lowercase() }))
+        else when (name) {
             RECENT_KEY -> vm.songsFor(settings.recents)
             ADDED_KEY -> allSongs.sortedByDescending { it.dateAdded }.take(50)
             MOST_KEY -> vm.songsFor(mostPlayedIds(settings.playCounts))
@@ -674,7 +678,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
             else -> vm.songsFor(settings.playlists[name] ?: emptyList())
         }
     }
-    val title = when (name) {
+    val title = if (era != null) stringResource(R.string.era_label, era % 100) else when (name) {
         RECENT_KEY -> stringResource(R.string.recently_played)
         ADDED_KEY -> stringResource(R.string.recently_added)
         MOST_KEY -> stringResource(R.string.most_played)

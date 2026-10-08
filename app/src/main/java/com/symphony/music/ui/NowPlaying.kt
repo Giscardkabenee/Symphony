@@ -65,6 +65,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandHorizontally
 import com.symphony.music.data.LyricLine
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -699,7 +702,19 @@ private fun Controls(
 ) {
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 28.dp, end = 28.dp, top = 8.dp, bottom = 16.dp)) {
         if (mode != MODE_QUEUE) Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+            // On the lyrics page, a small cover beside the title; touching either brings the cover back.
+            AnimatedVisibility(
+                visible = mode == MODE_LYRICS,
+                enter = fadeIn(tween(250)) + expandHorizontally(tween(300)),
+                exit = fadeOut(tween(150)) + shrinkHorizontally(tween(250)),
+            ) {
+                Artwork(
+                    song.albumId, song.album,
+                    Modifier.padding(end = 14.dp).size(52.dp).clip(RoundedCornerShape(12.dp)).clickable { onMode(MODE_LYRICS) },
+                    RoundedCornerShape(12.dp),
+                )
+            }
+            Column(Modifier.weight(1f).then(if (mode == MODE_LYRICS) Modifier.clickable { onMode(MODE_LYRICS) } else Modifier)) {
                 Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     text = song.artist,
@@ -827,6 +842,8 @@ private fun Controls(
                 label = stringResource(R.string.favorite),
                 active = favorite,
             ) { vm.toggleFavorite(song.id) }
+            // Lyrics on and off, as in Apple Music.
+            ToggleIcon(Icons.Rounded.Lyrics, stringResource(R.string.lyrics), mode == MODE_LYRICS) { onMode(MODE_LYRICS) }
             ToggleIcon(Icons.Rounded.QueueMusic, stringResource(R.string.queue), mode == MODE_QUEUE) { onMode(MODE_QUEUE) }
             // Sleep timer: lit while it runs.
             val sleepLeft = rememberSleepLeft()
@@ -902,7 +919,7 @@ private fun ToggleIcon(icon: ImageVector, label: String, active: Boolean, onClic
     val tint by animateColorAsState(if (active) Color.White else Color.White.copy(alpha = 0.82f), tween(220), label = "tint")
     Box(
         modifier = Modifier
-            .size(60.dp)
+            .size(52.dp)
             .clip(CircleShape)
             .background(fill)
             .clickable(onClickLabel = label, onClick = onClick),

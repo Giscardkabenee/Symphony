@@ -458,7 +458,7 @@ fun HomeScreen(
                                 .height(84.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Brush.linearGradient(listOf(tint, lerp(tint, Color.Black, 0.45f))))
-                                .clickable { vm.play(list, 0, shuffle = true) }
+                                .clickable { onStack(ERA_PREFIX + decade) }
                                 .padding(14.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
