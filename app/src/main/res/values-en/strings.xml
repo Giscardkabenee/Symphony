@@ -179,4 +179,5 @@
     <string name="widget_name">Symphony player</string>
     <string name="widget_desc">Cover and playback controls</string>
     <string name="widget_idle">Tap to open</string>
+    <string name="lyrics_unavailable">Lyrics unavailable</string>
 </resources>

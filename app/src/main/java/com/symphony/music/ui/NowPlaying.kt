@@ -16,6 +16,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import kotlinx.coroutines.delay
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
@@ -146,6 +147,38 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
         label = "phase",
     )
     var mode by rememberSaveable { mutableStateOf(MODE_COVER) }
+    // A short message over the player that fades after two seconds.
+    var notice by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            delay(2000)
+            notice = null
+        }
+    }
+    val unavailable = stringResource(R.string.lyrics_unavailable)
+    val searching = stringResource(R.string.lyrics_searching)
+    // The lyrics page opens only when there are lyrics to show.
+    val openMode: (Int) -> Unit = { target ->
+        if (target != MODE_LYRICS || mode == MODE_LYRICS || lyrics != null) {
+            mode = if (mode == target) MODE_COVER else target
+        } else {
+            when (lyricsStatus) {
+                1 -> notice = searching
+                4 -> {
+                    vm.retryLyrics()
+                    notice = searching
+                }
+                else -> notice = unavailable
+            }
+        }
+    }
+    // A new song without lyrics sends the lyrics page back to the cover.
+    LaunchedEffect(lyricsStatus, mode) {
+        if (mode == MODE_LYRICS && lyrics == null && (lyricsStatus == 3 || lyricsStatus == 4)) {
+            mode = MODE_COVER
+            notice = unavailable
+        }
+    }
     val activeLine = remember(lyrics, state.position) { currentLine(lyrics, state.position) }
 
     CompositionLocalProvider(LocalContentColor provides Color.White) {
@@ -253,6 +286,24 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     ) {
                         Box(Modifier.size(width = 40.dp, height = 5.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
                     }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = notice != null,
+                        enter = fadeIn(tween(200)),
+                        exit = fadeOut(tween(300)),
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
+                    ) {
+                        var shown by remember { mutableStateOf("") }
+                        notice?.let { shown = it }
+                        Text(
+                            text = shown,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                        )
+                    }
                 }
                 Controls(
                     song = song,
@@ -265,7 +316,7 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     hasLyrics = lyrics != null,
                     mode = mode,
                     showVolume = !settings.hideVolume,
-                    onMode = { mode = if (mode == it) MODE_COVER else it },
+                    onMode = openMode,
                     onMore = { onMore(song) },
                     onArtist = { onArtist(song.artist) },
                 )

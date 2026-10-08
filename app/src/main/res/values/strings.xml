@@ -180,4 +180,5 @@
     <string name="widget_name">Symphony — lecteur</string>
     <string name="widget_desc">Pochette et commandes de lecture</string>
     <string name="widget_idle">Touchez pour ouvrir</string>
+    <string name="lyrics_unavailable">Paroles indisponibles</string>
 </resources>
