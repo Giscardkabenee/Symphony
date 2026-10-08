@@ -238,4 +238,8 @@
     <string name="automix">AutoMix</string>
     <string name="automix_desc">Songs flow into each other with a crossfade, skipping silence at the end and start. Consecutive tracks of an album stay untouched.</string>
     <string name="automix_length">Crossfade length: %1$d s</string>
+    <string name="music_total">%1$d h %2$02d of music</string>
+    <string name="music_latest">Latest addition: %1$s</string>
+    <string name="music_top_artist">Most present artist: %1$s (%2$d songs)</string>
+    <string name="music_longest_album">Longest album: %1$s</string>
 </resources>

@@ -137,7 +137,7 @@ private fun greeting(name: String, songCount: Int, topArtist: String?): Pair<Lis
  * the line under it rolls on its own rhythm.
  */
 @Composable
-private fun GreetingHeader(titles: List<String>, lines: List<String>, onSettings: () -> Unit) {
+private fun AnimatedHeader(titles: List<String>, lines: List<String>, action: @Composable () -> Unit = {}) {
     var titleIndex by remember(titles) { mutableIntStateOf(0) }
     var lineIndex by remember(lines) { mutableIntStateOf(0) }
     var typed by remember(titles) { mutableIntStateOf(0) }
@@ -205,9 +205,7 @@ private fun GreetingHeader(titles: List<String>, lines: List<String>, onSettings
                 Text(line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        IconButton(onClick = onSettings) {
-            Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
-        }
+        action()
     }
 }
 
@@ -281,7 +279,11 @@ fun HomeScreen(
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         stickyHeader {
-            GreetingHeader(greetings, taglines, onSettings)
+            AnimatedHeader(greetings, taglines) {
+                IconButton(onClick = onSettings) {
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
+                }
+            }
         }
         if (songs.isEmpty()) {
             item { EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint)) }
@@ -664,7 +666,19 @@ fun MusicScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle(stringResource(R.string.tab_music), stringResource(R.string.library_summary, songs.size, albums.size, artists.size))
+        // Fixed title written in on arrival; the line under it rolls through facts about the library.
+        val minutes = songs.sumOf { it.duration } / 60_000
+        val latest = remember(songs) { songs.maxByOrNull { it.dateAdded } }
+        val biggest = remember(artists) { artists.maxByOrNull { it.songs.size } }
+        val longest = remember(albums) { albums.maxByOrNull { a -> a.songs.sumOf { it.duration } } }
+        val facts = buildList {
+            add(stringResource(R.string.library_summary, songs.size, albums.size, artists.size))
+            if (minutes > 0) add(stringResource(R.string.music_total, minutes / 60, minutes % 60))
+            latest?.let { add(stringResource(R.string.music_latest, it.title)) }
+            biggest?.let { add(stringResource(R.string.music_top_artist, it.name, it.songs.size)) }
+            longest?.let { add(stringResource(R.string.music_longest_album, it.title)) }
+        }
+        AnimatedHeader(listOf(stringResource(R.string.tab_music)), facts)
         // Four equal pills, so none is cut off at the edge.
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             labels.forEachIndexed { i, label ->
