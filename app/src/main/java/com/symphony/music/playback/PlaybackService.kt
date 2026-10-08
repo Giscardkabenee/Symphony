@@ -54,6 +54,8 @@ class PlaybackService : MediaSessionService() {
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var appliedEffects: List<Int>? = null
+    private var fader: ExoPlayer? = null
+    private var automix: AutoMix? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -105,6 +107,13 @@ class PlaybackService : MediaSessionService() {
             null
         }
         PlaybackInfo.audioSessionId.value = audioSessionId
+        // Second player for AutoMix: same sound path and effects, never takes audio focus.
+        val second = ExoPlayer.Builder(this, DefaultRenderersFactory(this).setEnableAudioFloatOutput(initial.floatOutput))
+            .setAudioAttributes(attributes, false)
+            .build()
+        second.audioSessionId = audioSessionId
+        fader = second
+        automix = AutoMix(this, player, second, scope).also { it.start() }
         equalizer = try { Equalizer(0, audioSessionId) } catch (e: Exception) { null }
         bassBoost = try { BassBoost(0, audioSessionId) } catch (e: Exception) { null }
         val openApp = PendingIntent.getActivity(
@@ -124,6 +133,8 @@ class PlaybackService : MediaSessionService() {
                 preferUsb = it.usbDac
                 applyOutputDevice()
                 applyEffects(it)
+                automix?.enabled = it.automix
+                automix?.fadeMs = it.automixSeconds * 1000L
             }
         }
     }
@@ -180,6 +191,7 @@ class PlaybackService : MediaSessionService() {
             null
         }
         try {
+            fader?.setPreferredAudioDevice(usb)
             player.setPreferredAudioDevice(usb)
         } catch (e: Exception) {
             // Routing stays with the system.
@@ -202,6 +214,10 @@ class PlaybackService : MediaSessionService() {
         scope.cancel()
         (getSystemService(AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(deviceCallback)
         exo = null
+        automix?.stop()
+        automix = null
+        fader?.release()
+        fader = null
         SleepTimer.cancel()
         SleepTimer.player = null
         PlayerWidget.player = null

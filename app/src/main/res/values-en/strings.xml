@@ -235,4 +235,7 @@
     <string name="stat_plays">plays in total</string>
     <string name="stat_favorites">favourite songs</string>
     <string name="shuffle_everything">Shuffle all my music</string>
+    <string name="automix">AutoMix</string>
+    <string name="automix_desc">Songs flow into each other with a crossfade, skipping silence at the end and start. Consecutive tracks of an album stay untouched.</string>
+    <string name="automix_length">Crossfade length: %1$d s</string>
 </resources>

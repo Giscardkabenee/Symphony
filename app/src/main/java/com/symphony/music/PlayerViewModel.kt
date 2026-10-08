@@ -211,6 +211,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 .setTitle(title)
                 .setArtist(artist)
                 .setAlbumTitle(album)
+                .setTrackNumber(track)
                 .setArtworkUri(artUri)
                 .build()
         )

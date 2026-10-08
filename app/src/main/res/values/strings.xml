@@ -236,4 +236,7 @@
     <string name="stat_plays">écoutes au total</string>
     <string name="stat_favorites">titres en favoris</string>
     <string name="shuffle_everything">Mélanger toute ma musique</string>
+    <string name="automix">AutoMix</string>
+    <string name="automix_desc">Les titres s\'enchaînent en fondu, sans les silences de fin et de début. Les pistes qui se suivent sur un même album restent intactes.</string>
+    <string name="automix_length">Durée du fondu : %1$d s</string>
 </resources>

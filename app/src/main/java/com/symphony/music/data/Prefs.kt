@@ -29,6 +29,7 @@ object Flags {
     const val ARTIST_PHOTOS = "artist_photos"
     const val FLOAT_OUTPUT = "float_output"
     const val USB_DAC = "usb_dac"
+    const val AUTOMIX = "automix"
 }
 
 /** Number of bands the equalizer screen offers. */
@@ -66,6 +67,9 @@ data class AppSettings(
     val virtualizer: Int = 0,
     /** First name used in the home greeting; empty for none. */
     val userName: String = "Giscard",
+    val automix: Boolean = false,
+    /** Length of the AutoMix cross, in seconds. */
+    val automixSeconds: Int = 6,
 )
 
 class Prefs(context: Context) {
@@ -100,6 +104,8 @@ class Prefs(context: Context) {
             bassBoost = (p[intPreferencesKey("bass_boost")] ?: 0).coerceIn(0, 1000),
             virtualizer = (p[intPreferencesKey("virtualizer")] ?: 0).coerceIn(0, 1000),
             userName = p[stringPreferencesKey("user_name")] ?: "Giscard",
+            automix = p[booleanPreferencesKey(Flags.AUTOMIX)] ?: false,
+            automixSeconds = (p[intPreferencesKey("automix_seconds")] ?: 6).coerceIn(2, 12),
         )
     }
 

@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.symphony.music.PlayerViewModel
 import com.symphony.music.R
+import kotlin.math.roundToInt
 import com.symphony.music.data.AlbumInfo
 import com.symphony.music.data.Flags
 import com.symphony.music.data.Song
@@ -797,6 +798,21 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.VolumeOff, stringResource(R.string.hide_volume), stringResource(R.string.hide_volume_desc), settings.hideVolume) { vm.setFlag(Flags.HIDE_VOLUME, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.SurroundSound, stringResource(R.string.spatial), stringResource(R.string.spatial_desc), settings.spatial) { vm.setFlag(Flags.SPATIAL, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.AutoAwesome, stringResource(R.string.automix), stringResource(R.string.automix_desc), settings.automix) { vm.setFlag(Flags.AUTOMIX, it) }
+                if (settings.automix) {
+                    var seconds by remember(settings.automixSeconds) { mutableFloatStateOf(settings.automixSeconds.toFloat()) }
+                    Column(Modifier.padding(start = 56.dp, end = 16.dp, bottom = 8.dp)) {
+                        Text(stringResource(R.string.automix_length, seconds.roundToInt()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Slider(
+                            value = seconds,
+                            onValueChange = { seconds = it },
+                            onValueChangeFinished = { vm.setEffect("automix_seconds", seconds.roundToInt()) },
+                            valueRange = 2f..12f,
+                            steps = 9,
+                        )
+                    }
+                }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable { equalizer = true }.padding(horizontal = 16.dp, vertical = 14.dp),
