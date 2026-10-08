@@ -4,18 +4,11 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:scaleX="0.15"
-        android:scaleY="0.15"
-        android:translateX="25.2"
-        android:translateY="25.2">
-        <path
-            android:pathData="M252,128C252,92 132,84 132,150C132,204 252,186 252,240C252,304 132,296 132,258"
-            android:strokeColor="#F2B26B"
-            android:strokeWidth="34"
-            android:strokeLineCap="round" />
-        <path
-            android:fillColor="#FBE9D0"
-            android:pathData="M277,96a15,15 0 1,0 30,0a15,15 0 1,0 -30,0" />
-    </group>
+    <path android:fillColor="#FF0A0A0C" android:pathData="M33.30,47.40h0.00a2.40,2.40 0,0 1,2.40,2.40v8.40a2.40,2.40 0,0 1,-2.40,2.40a2.40,2.40 0,0 1,-2.40,-2.40v-8.40a2.40,2.40 0,0 1,2.40,-2.40z" />
+    <path android:fillColor="#FF0A0A0C" android:pathData="M40.20,42.00h0.00a2.40,2.40 0,0 1,2.40,2.40v19.20a2.40,2.40 0,0 1,-2.40,2.40a2.40,2.40 0,0 1,-2.40,-2.40v-19.20a2.40,2.40 0,0 1,2.40,-2.40z" />
+    <path android:fillColor="#FF0A0A0C" android:pathData="M47.10,36.60h0.00a2.40,2.40 0,0 1,2.40,2.40v30.00a2.40,2.40 0,0 1,-2.40,2.40a2.40,2.40 0,0 1,-2.40,-2.40v-30.00a2.40,2.40 0,0 1,2.40,-2.40z" />
+    <path android:fillColor="#FF0A0A0C" android:pathData="M54.00,33.00h0.00a2.40,2.40 0,0 1,2.40,2.40v37.20a2.40,2.40 0,0 1,-2.40,2.40a2.40,2.40 0,0 1,-2.40,-2.40v-37.20a2.40,2.40 0,0 1,2.40,-2.40z" />
+    <path android:fillColor="#FF0A0A0C" android:pathData="M60.90,39.00h0.00a2.40,2.40 0,0 1,2.40,2.40v25.20a2.40,2.40 0,0 1,-2.40,2.40a2.40,2.40 0,0 1,-2.40,-2.40v-25.20a2.40,2.40 0,0 1,2.40,-2.40z" />
+    <path android:fillColor="#FF0A0A0C" android:pathData="M67.80,43.80h0.00a2.40,2.40 0,0 1,2.40,2.40v15.60a2.40,2.40 0,0 1,-2.40,2.40a2.40,2.40 0,0 1,-2.40,-2.40v-15.60a2.40,2.40 0,0 1,2.40,-2.40z" />
+    <path android:fillColor="#FF0A0A0C" android:pathData="M74.70,40.20h0.00a2.40,2.40 0,0 1,2.40,2.40v22.80a2.40,2.40 0,0 1,-2.40,2.40a2.40,2.40 0,0 1,-2.40,-2.40v-22.80a2.40,2.40 0,0 1,2.40,-2.40z" />
 </vector>
