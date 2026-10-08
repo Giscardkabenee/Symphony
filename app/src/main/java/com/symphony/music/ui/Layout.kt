@@ -27,6 +27,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.material.icons.rounded.ExpandMore
 import com.symphony.music.data.ArtistInfo
 import com.symphony.music.data.AlbumInfo
@@ -94,7 +101,7 @@ private fun GroupLabel(text: String) {
  * and change a little from one day (and one hour) to the next.
  */
 @Composable
-private fun greeting(name: String, songCount: Int, topArtist: String?): Pair<String, String> {
+private fun greeting(name: String, songCount: Int, topArtist: String?): Pair<List<String>, List<String>> {
     val now = remember { java.util.Calendar.getInstance() }
     val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
     val day = now.get(java.util.Calendar.DAY_OF_WEEK)
@@ -117,7 +124,90 @@ private fun greeting(name: String, songCount: Int, topArtist: String?): Pair<Str
         in 5..8 -> lines += stringResource(R.string.sub_wake)
         in 22..23, in 0..4 -> lines += stringResource(R.string.sub_night)
     }
-    return stringResource(titles[seed % titles.size], who) to lines[(seed + hour) % lines.size]
+    // Today's pick first, then the other phrases of the moment; same for the lines under it.
+    val shift = seed % titles.size
+    val ordered = titles.indices.map { titles[(it + shift) % titles.size] }.map { stringResource(it, who) }
+    val lineShift = (seed + hour) % lines.size
+    return ordered to lines.indices.map { lines[(it + lineShift) % lines.size] }
+}
+
+/**
+ * Home title: the greeting types itself in, shimmers gently, then rolls to the next phrase of the moment;
+ * the line under it rolls on its own rhythm.
+ */
+@Composable
+private fun GreetingHeader(titles: List<String>, lines: List<String>, onSettings: () -> Unit) {
+    var titleIndex by remember(titles) { mutableIntStateOf(0) }
+    var lineIndex by remember(lines) { mutableIntStateOf(0) }
+    var typed by remember(titles) { mutableIntStateOf(0) }
+    val first = titles.firstOrNull().orEmpty()
+    // Letter by letter, the first time.
+    LaunchedEffect(titles) {
+        typed = 0
+        while (typed < first.length) {
+            delay(38)
+            typed++
+        }
+        while (titles.size > 1) {
+            delay(7000)
+            titleIndex = (titleIndex + 1) % titles.size
+        }
+    }
+    LaunchedEffect(lines) {
+        while (lines.size > 1) {
+            delay(4200)
+            lineIndex = (lineIndex + 1) % lines.size
+        }
+    }
+    val ink = MaterialTheme.colorScheme.onSurface
+    val shine = androidx.compose.animation.core.rememberInfiniteTransition(label = "shine")
+    val sweep by shine.animateFloat(
+        initialValue = -600f,
+        targetValue = 1400f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(4200, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "sweep",
+    )
+    val brush = Brush.linearGradient(
+        colors = listOf(ink, ink, Color(0xFF8B5CF6), Color(0xFFE2502F), ink, ink),
+        start = androidx.compose.ui.geometry.Offset(sweep, 0f),
+        end = androidx.compose.ui.geometry.Offset(sweep + 700f, 120f),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            val shown = if (titleIndex == 0) first.take(typed) else titles[titleIndex]
+            androidx.compose.animation.AnimatedContent(
+                targetState = titleIndex,
+                transitionSpec = {
+                    (slideInVertically(tween(520)) { it / 2 } + fadeIn(tween(520))) togetherWith
+                        (slideOutVertically(tween(420)) { -it / 2 } + fadeOut(tween(300)))
+                },
+                label = "title",
+            ) { index ->
+                Text(
+                    text = if (index == titleIndex) shown else titles.getOrElse(index) { "" },
+                    style = MaterialTheme.typography.headlineLarge.copy(brush = brush),
+                    fontWeight = FontWeight.ExtraBold,
+                    minLines = 1,
+                )
+            }
+            androidx.compose.animation.AnimatedContent(
+                targetState = lines.getOrElse(lineIndex) { "" },
+                transitionSpec = {
+                    (slideInVertically(tween(450)) { it } + fadeIn(tween(450))) togetherWith
+                        (slideOutVertically(tween(350)) { -it } + fadeOut(tween(250)))
+                },
+                label = "line",
+            ) { line ->
+                Text(line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        IconButton(onClick = onSettings) {
+            Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
+        }
+    }
 }
 
 /** One of the six shortcuts at the top of the home screen. */
@@ -166,15 +256,11 @@ fun HomeScreen(
         artists.sortedWith(compareByDescending<com.symphony.music.data.ArtistInfo> { plays[it] ?: 0 }.thenByDescending { it.songs.size }).take(10)
     }
     val topArtist = if (settings.playCounts.isEmpty()) null else topArtists.firstOrNull()?.name
-    val (greeting, tagline) = greeting(settings.userName, songs.size, topArtist)
+    val (greetings, taglines) = greeting(settings.userName, songs.size, topArtist)
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         stickyHeader {
-            ScreenTitle(greeting, tagline) {
-                IconButton(onClick = onSettings) {
-                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
-                }
-            }
+            GreetingHeader(greetings, taglines, onSettings)
         }
         if (songs.isEmpty()) {
             item { EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint)) }

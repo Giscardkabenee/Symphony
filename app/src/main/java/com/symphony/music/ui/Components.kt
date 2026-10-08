@@ -66,6 +66,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -421,7 +425,10 @@ private val tabs = listOf(
     Tab("music", R.string.tab_music, Icons.Rounded.MusicNote),
 )
 
-/** Mini-player card with a progress ring around play / pause, over a small centred island of three tabs. */
+/**
+ * Two clean white pills: the mini-player, and the tabs with a dark marker that slides with a little
+ * bounce to the chosen tab while its name unfolds.
+ */
 @Composable
 fun FloatingBar(
     state: PlayerState,
@@ -437,60 +444,78 @@ fun FloatingBar(
     classic: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val pill = CircleShape
+    val face = scheme.surfaceContainerLowest.copy(alpha = 0.95f)
+    val edge = scheme.outlineVariant.copy(alpha = 0.45f)
     Column(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         val song = state.current
         AnimatedVisibility(
             visible = song != null,
-            enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 },
-            exit = fadeOut(tween(200)),
+            enter = fadeIn(tween(260)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow), initialScale = 0.85f),
+            exit = fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.9f),
         ) {
             if (song != null) {
-                val card = RoundedCornerShape(22.dp)
+                val source = remember { MutableInteractionSource() }
+                val pressed by source.collectIsPressedAsState()
+                val press by animateFloatAsState(if (pressed) 0.97f else 1f, spring(dampingRatio = 0.5f), label = "miniPress")
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(62.dp)
-                        .shadow(14.dp, card, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.18f))
-                        .clip(card)
-                        .background(scheme.surfaceContainerLowest.copy(alpha = 0.96f))
-                        .border(1.dp, scheme.outlineVariant.copy(alpha = 0.5f), card)
-                        .clickable(onClick = onOpenPlayer)
-                        .padding(start = 9.dp, end = 6.dp),
+                        .height(64.dp)
+                        .graphicsLayer {
+                            scaleX = press
+                            scaleY = press
+                        }
+                        .shadow(16.dp, pill, ambientColor = Color.Black.copy(alpha = 0.16f), spotColor = Color.Black.copy(alpha = 0.16f))
+                        .clip(pill)
+                        .background(face)
+                        .border(1.dp, edge, pill)
+                        .clickable(interactionSource = source, indication = LocalIndication.current, onClick = onOpenPlayer)
+                        .padding(start = 10.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Artwork(song.albumId, song.album, Modifier.size(44.dp), RoundedCornerShape(11.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                    // A new song slides in from below.
+                    androidx.compose.animation.AnimatedContent(
+                        targetState = song,
+                        transitionSpec = {
+                            (slideInVertically(tween(380)) { it } + fadeIn(tween(380))) togetherWith
+                                (slideOutVertically(tween(300)) { -it } + fadeOut(tween(220)))
+                        },
+                        contentKey = { it.id },
+                        modifier = Modifier.weight(1f),
+                        label = "miniSong",
+                    ) { s ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Artwork(s.albumId, s.album, Modifier.size(44.dp), RoundedCornerShape(12.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(s.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                Text(s.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                            }
+                        }
                     }
-                    // Play / pause inside a ring that fills as the song advances.
-                    val fraction = if (state.duration > 0) (state.position.toFloat() / state.duration).coerceIn(0f, 1f) else 0f
-                    val ring = scheme.onSurface
-                    val track = scheme.surfaceContainerHighest
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .clickable(onClickLabel = stringResource(if (state.isPlaying) R.string.pause else R.string.play), onClick = onToggle)
-                            .drawBehind {
-                                val stroke = 3.dp.toPx()
-                                val inset = stroke / 2 + 1.dp.toPx()
-                                val arcSize = androidx.compose.ui.geometry.Size(size.width - inset * 2, size.height - inset * 2)
-                                val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
-                                drawArc(track, 0f, 360f, false, topLeft, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
-                                drawArc(ring, -90f, 360f * fraction, false, topLeft, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                    IconButton(onClick = onToggle) {
+                        // Play and pause swap with a small turn and pop.
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = state.isPlaying,
+                            transitionSpec = {
+                                (scaleIn(spring(dampingRatio = 0.5f), initialScale = 0.4f) + fadeIn(tween(150))) togetherWith
+                                    (scaleOut(tween(120), targetScale = 0.4f) + fadeOut(tween(120)))
                             },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(22.dp))
+                            label = "miniToggle",
+                        ) { playing ->
+                            Icon(
+                                imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = stringResource(if (playing) R.string.pause else R.string.play),
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
                     }
                     IconButton(onClick = onNext) {
                         Icon(Icons.Rounded.SkipNext, stringResource(R.string.next), Modifier.size(26.dp))
@@ -498,32 +523,51 @@ fun FloatingBar(
                 }
             }
         }
-        // Small island in contrast with the page: dark in light theme, light in dark theme.
-        val island = CircleShape
-        Row(
+        // Tabs: equal slots, a dark marker gliding under the chosen one.
+        val items = tabs.map { Triple(it.route, it.label, it.icon) } + Triple("search", R.string.search, Icons.Rounded.Search)
+        val selected = items.indexOfFirst { it.first == route }
+        BoxWithConstraints(
             modifier = Modifier
-                .height(58.dp)
-                .shadow(16.dp, island, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f))
-                .clip(island)
-                .background(scheme.inverseSurface)
-                .padding(horizontal = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .fillMaxWidth()
+                .height(66.dp)
+                .shadow(16.dp, pill, ambientColor = Color.Black.copy(alpha = 0.16f), spotColor = Color.Black.copy(alpha = 0.16f))
+                .clip(pill)
+                .background(face)
+                .border(1.dp, edge, pill)
+                .padding(7.dp),
         ) {
-            tabs.forEach { tab ->
-                IslandItem(tab.icon, stringResource(tab.label), route == tab.route) { onTab(tab.route) }
+            val slot = maxWidth / items.size
+            val markerX by animateDpAsState(
+                targetValue = slot * selected.coerceAtLeast(0),
+                animationSpec = spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessMediumLow),
+                label = "marker",
+            )
+            val markerAlpha by animateFloatAsState(if (selected >= 0) 1f else 0f, tween(200), label = "markerAlpha")
+            Box(
+                Modifier
+                    .offset(x = markerX)
+                    .width(slot)
+                    .fillMaxHeight()
+                    .graphicsLayer { alpha = markerAlpha }
+                    .clip(pill)
+                    .background(scheme.onSurface)
+            )
+            Row(Modifier.fillMaxSize()) {
+                items.forEachIndexed { i, (r, label, icon) ->
+                    TabSlot(icon, stringResource(label), i == selected, !hideLabels, Modifier.width(slot).fillMaxHeight()) {
+                        if (r == "search") onSearch() else onTab(r)
+                    }
+                }
             }
-            IslandItem(Icons.Rounded.Search, stringResource(R.string.search), route == "search", onSearch)
         }
     }
 }
 
 @Composable
-private fun IslandItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+private fun TabSlot(icon: ImageVector, label: String, selected: Boolean, showLabel: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val fill by animateColorAsState(if (selected) scheme.inverseOnSurface else Color.Transparent, tween(240), label = "fill")
-    val tint by animateColorAsState(if (selected) scheme.inverseSurface else scheme.inverseOnSurface.copy(alpha = 0.62f), tween(240), label = "tint")
-    // Physical feel: the item sinks under the finger, springs back, and the phone gives a short tick.
+    val tint by animateColorAsState(if (selected) scheme.surface else scheme.onSurfaceVariant, tween(260), label = "tint")
+    // Physical feel: the slot sinks under the finger, springs back, and the phone gives a short tick.
     val view = LocalView.current
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
@@ -532,21 +576,37 @@ private fun IslandItem(icon: ImageVector, label: String, selected: Boolean, onCl
         animationSpec = spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium),
         label = "press",
     )
-    Box(
-        modifier = Modifier
-            .size(width = 64.dp, height = 44.dp)
+    val lift by animateFloatAsState(if (selected) 1f else 0f, spring(dampingRatio = 0.5f), label = "lift")
+    Row(
+        modifier = modifier
             .graphicsLayer {
                 scaleX = press
                 scaleY = press
             }
             .clip(CircleShape)
-            .background(fill)
-            .clickable(interactionSource = source, indication = LocalIndication.current, onClickLabel = label) {
+            .clickable(interactionSource = source, indication = null, onClickLabel = label) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                 onClick()
             },
-        contentAlignment = Alignment.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, contentDescription = label, modifier = Modifier.size(24.dp), tint = tint)
+        Icon(
+            icon,
+            contentDescription = if (selected && showLabel) null else label,
+            tint = tint,
+            modifier = Modifier.size(24.dp).graphicsLayer {
+                val k = 1f + 0.08f * lift
+                scaleX = k
+                scaleY = k
+            },
+        )
+        AnimatedVisibility(
+            visible = selected && showLabel,
+            enter = fadeIn(tween(220, delayMillis = 80)) + expandHorizontally(spring(dampingRatio = 0.7f)),
+            exit = fadeOut(tween(100)) + shrinkHorizontally(tween(180)),
+        ) {
+            Text(label, modifier = Modifier.padding(start = 8.dp), maxLines = 1, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = tint)
+        }
     }
 }
