@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.LocalView
 import android.view.HapticFeedbackConstants
 import sh.calvin.reorderable.ReorderableItem
