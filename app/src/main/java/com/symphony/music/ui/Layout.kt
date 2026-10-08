@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -76,92 +78,130 @@ private fun GroupLabel(text: String) {
 
 // ---------------------------------------------------------------- Home
 
+/** One of the six shortcuts at the top of the home screen. */
+@Composable
+private fun QuickTile(title: String, modifier: Modifier, onClick: () -> Unit, art: @Composable () -> Unit) {
+    Row(
+        modifier = modifier
+            .height(58.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(58.dp)) { art() }
+        Spacer(Modifier.width(10.dp))
+        Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 17.sp, modifier = Modifier.padding(end = 8.dp))
+    }
+}
+
 @Composable
 fun HomeScreen(
     vm: PlayerViewModel,
     onSettings: () -> Unit,
     onStack: (String) -> Unit,
     onAlbum: (Long) -> Unit,
-    onMusic: () -> Unit,
+    onArtist: (String) -> Unit,
 ) {
     val songs by vm.songs.collectAsStateWithLifecycle()
+    val albums by vm.albums.collectAsStateWithLifecycle()
+    val artists by vm.artists.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val recent = remember(settings.recents, songs) { vm.songsFor(settings.recents) }
     val added = remember(songs) { songs.sortedByDescending { it.dateAdded }.take(50) }
     val most = remember(settings.playCounts, songs) { vm.songsFor(mostPlayedIds(settings.playCounts)) }
-    val latestAlbums = remember(songs) { songs.sortedByDescending { it.dateAdded }.distinctBy { it.albumId }.take(12) }
+    val favorites = remember(settings.favorites, songs) { vm.songsFor(settings.favorites) }
+    // Two albums for the grid: the ones played last, else the ones added last.
+    val tileAlbums = remember(recent, added, albums) {
+        (recent + added).map { it.albumId }.distinct().mapNotNull { id -> albums.firstOrNull { it.id == id } }.take(2)
+    }
+    // Most played songs, else the newest ones.
+    val topSongs = remember(most, added) { (most.ifEmpty { added }).take(12) }
+    // Artists by plays, else by number of songs.
+    val topArtists = remember(settings.playCounts, artists) {
+        val plays = artists.associateWith { a -> a.songs.sumOf { settings.playCounts[it.id] ?: 0 } }
+        artists.sortedWith(compareByDescending<com.symphony.music.data.ArtistInfo> { plays[it] ?: 0 }.thenByDescending { it.songs.size }).take(10)
+    }
+    val hour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
+    val greeting = stringResource(if (hour in 5..17) R.string.greet_day else R.string.greet_evening)
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         stickyHeader {
-            ScreenTitle(stringResource(R.string.app_name)) {
+            ScreenTitle(greeting, stringResource(R.string.home_count, songs.size)) {
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
                 }
             }
         }
-        // What is in the player, or else the last song listened to.
-        val current = state.current
-        val resume = current ?: recent.firstOrNull()
-        if (resume != null) {
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .clickable { if (current != null) vm.toggle() else vm.play(recent, 0) }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Artwork(resume.albumId, resume.album, Modifier.size(60.dp), RoundedCornerShape(14.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(if (current != null) R.string.home_now else R.string.home_resume).uppercase(),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.6.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(resume.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text(resume.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Box(Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface), contentAlignment = Alignment.Center) {
-                        val playing = current != null && state.isPlaying
-                        Icon(
-                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = stringResource(if (playing) R.string.pause else R.string.play),
-                            tint = MaterialTheme.colorScheme.surface,
-                        )
-                    }
-                }
-            }
-        }
         if (songs.isEmpty()) {
             item { EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint)) }
-        } else {
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    item { StackCard(stringResource(R.string.recently_played), recent) { onStack(RECENT_KEY) } }
-                    item { StackCard(stringResource(R.string.recently_added), added) { onStack(ADDED_KEY) } }
-                    item { StackCard(stringResource(R.string.most_played), most) { onStack(MOST_KEY) } }
+            return@LazyColumn
+        }
+        item {
+            val tiles = buildList<Pair<String, Pair<() -> Unit, @Composable () -> Unit>>> {
+                add(stringResource(R.string.favorites) to ({ onStack(FAVORITES_KEY) } to @Composable {
+                    Box(
+                        Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5B3CC4), Color(0xFFB57BE8)))),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.Favorite, contentDescription = null, tint = Color.White) }
+                }))
+                listOf(
+                    Triple(R.string.recently_played, RECENT_KEY, recent),
+                    Triple(R.string.recently_added, ADDED_KEY, added),
+                    Triple(R.string.most_played, MOST_KEY, most),
+                ).forEach { (label, key, list) ->
+                    val first = list.firstOrNull()
+                    add(stringResource(label) to ({ onStack(key) } to @Composable {
+                        if (first != null) Artwork(first.albumId, first.album, Modifier.fillMaxSize(), RectangleShape)
+                        else Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest))
+                    }))
+                }
+                tileAlbums.forEach { album ->
+                    add(album.title to ({ onAlbum(album.id) } to @Composable {
+                        Artwork(album.id, album.title, Modifier.fillMaxSize(), RectangleShape)
+                    }))
+                }
+            }
+            Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                tiles.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        row.forEach { (title, action) -> QuickTile(title, Modifier.weight(1f), action.first, action.second) }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
                 }
             }
         }
-        if (latestAlbums.isNotEmpty()) {
-            item { SectionLink(stringResource(R.string.latest_albums), stringResource(R.string.see_all), onMusic) }
+        if (topSongs.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.fav_songs)) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(latestAlbums.size) { i ->
-                        val song = latestAlbums[i]
-                        Column(Modifier.width(120.dp).clip(RoundedCornerShape(14.dp)).clickable { onAlbum(song.albumId) }) {
-                            Artwork(song.albumId, song.album, Modifier.size(120.dp), RoundedCornerShape(14.dp))
+                    items(topSongs.size) { i ->
+                        val song = topSongs[i]
+                        val active = state.current?.id == song.id
+                        Column(Modifier.width(136.dp).clip(RoundedCornerShape(16.dp)).clickable { vm.play(topSongs, i) }) {
+                            Artwork(song.albumId, song.album, Modifier.size(136.dp), RoundedCornerShape(16.dp))
                             Spacer(Modifier.height(6.dp))
-                            Text(song.album, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                            Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+        if (topArtists.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.your_artists)) }
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    items(topArtists.size) { i ->
+                        val artist = topArtists[i]
+                        Column(
+                            modifier = Modifier.width(76.dp).clip(RoundedCornerShape(14.dp)).clickable { onArtist(artist.name) },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(72.dp))
+                            Spacer(Modifier.height(6.dp))
+                            Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                         }
                     }
                 }

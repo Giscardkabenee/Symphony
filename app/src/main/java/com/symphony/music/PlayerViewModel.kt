@@ -102,6 +102,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         connect()
+        // Podcast episodes saved by earlier versions are no longer used.
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val app = getApplication<Application>()
+            java.io.File(app.getExternalFilesDir(null) ?: app.filesDir, "podcasts").deleteRecursively()
+        }
         viewModelScope.launch {
             while (isActive) {
                 val c = controller

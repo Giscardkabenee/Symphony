@@ -181,4 +181,9 @@
     <string name="widget_desc">Pochette et commandes de lecture</string>
     <string name="widget_idle">Touchez pour ouvrir</string>
     <string name="lyrics_unavailable">Paroles indisponibles</string>
+    <string name="greet_day">Bonjour</string>
+    <string name="greet_evening">Bonsoir</string>
+    <string name="home_count">%1$d titres sur ce téléphone</string>
+    <string name="fav_songs">Vos titres préférés</string>
+    <string name="your_artists">Vos artistes</string>
 </resources>

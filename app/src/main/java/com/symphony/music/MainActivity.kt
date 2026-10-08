@@ -172,7 +172,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
 
     Box(Modifier.fillMaxSize()) {
         NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
-            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum) { nav.openTab("music") } }
+            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum, openArtist) }
             composable("music") { MusicScreen(vm, openAlbum, openArtist, openPlaylist, openMenu) }
             composable("search") { SearchScreen(vm, openAlbum, openArtist, openMenu) }
             composable("settings") { SettingsScreen(vm) { nav.popBackStack() } }

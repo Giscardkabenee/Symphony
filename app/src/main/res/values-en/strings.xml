@@ -180,4 +180,9 @@
     <string name="widget_desc">Cover and playback controls</string>
     <string name="widget_idle">Tap to open</string>
     <string name="lyrics_unavailable">Lyrics unavailable</string>
+    <string name="greet_day">Hello</string>
+    <string name="greet_evening">Good evening</string>
+    <string name="home_count">%1$d songs on this phone</string>
+    <string name="fav_songs">Your favourite songs</string>
+    <string name="your_artists">Your artists</string>
 </resources>
