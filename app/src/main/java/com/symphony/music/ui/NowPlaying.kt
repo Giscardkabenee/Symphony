@@ -122,6 +122,16 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
         return
     }
 
+    // White status-bar icons while the player is open, whatever the theme; restored on closing.
+    val window = (LocalView.current.context as? android.app.Activity)?.window
+    val barView = LocalView.current
+    DisposableEffect(window) {
+        val controller = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, barView) }
+        val before = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose { if (before != null) controller?.isAppearanceLightStatusBars = before }
+    }
+
     val context = LocalContext.current
     val rawTint by produceState(DefaultTint, song.albumId) {
         val found = dominantColor(context, song.artUri)
@@ -263,6 +273,19 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     )
                 }
             }
+            // A soft shade under the status bar so the time, network and battery stay readable on any cover.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.55f),
+                            0.45f to Color.Black.copy(alpha = 0.25f),
+                            1f to Color.Transparent,
+                        )
+                    )
+            )
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxWidth().weight(1f)) {
                     Crossfade(targetState = mode, animationSpec = tween(320), modifier = Modifier.fillMaxSize(), label = "mode") { shown ->
