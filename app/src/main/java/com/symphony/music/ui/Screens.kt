@@ -365,10 +365,11 @@ private fun DetailHeader(
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     artistPhotos: Boolean = false,
+    covers: List<Long> = emptyList(),
     action: @Composable () -> Unit = {},
 ) {
     if (albumId != null) {
-        CoverHeader(title, subtitle, albumId, label, onBack, onPlay, onShuffle, action)
+        CoverHeader(title, subtitle, albumId, label, onBack, onPlay, onShuffle, action, covers)
         return
     }
     val context = LocalContext.current
@@ -427,6 +428,7 @@ private fun CoverHeader(
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     action: @Composable () -> Unit,
+    covers: List<Long> = emptyList(),
 ) {
     // White status-bar icons over the cover, whatever the theme; restored on leaving.
     val view = LocalView.current
@@ -440,22 +442,34 @@ private fun CoverHeader(
 
     BoxWithConstraints(Modifier.fillMaxWidth().clipToBounds()) {
         val side = maxWidth
-        // The sharp cover, dissolving over its lower third into the blurred copy.
-        Artwork(
-            albumId, label,
-            Modifier
-                .fillMaxWidth()
-                .height(side)
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(
-                        brush = Brush.verticalGradient(0f to Color.Black, 0.6f to Color.Black, 0.95f to Color.Transparent),
-                        blendMode = BlendMode.DstIn,
-                    )
-                },
-            RectangleShape,
-        )
+        // The sharp cover (or a mosaic of covers for a list), dissolving over its lower third into the blurred copy.
+        val fade = Modifier
+            .fillMaxWidth()
+            .height(side)
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.verticalGradient(0f to Color.Black, 0.6f to Color.Black, 0.95f to Color.Transparent),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
+        val mosaic = covers.distinct()
+        when {
+            mosaic.size >= 4 -> Column(fade) {
+                for (r in 0..1) Row(Modifier.weight(1f).fillMaxWidth()) {
+                    for (c in 0..1) Artwork(mosaic[r * 2 + c], label, Modifier.weight(1f).fillMaxHeight(), RectangleShape)
+                }
+            }
+            mosaic.size == 3 -> Row(fade) {
+                Artwork(mosaic[0], label, Modifier.weight(2f).fillMaxHeight(), RectangleShape)
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    Artwork(mosaic[1], label, Modifier.weight(1f).fillMaxWidth(), RectangleShape)
+                    Artwork(mosaic[2], label, Modifier.weight(1f).fillMaxWidth(), RectangleShape)
+                }
+            }
+            else -> Artwork(albumId, label, fade, RectangleShape)
+        }
         // A light shade under the status bar.
         Box(
             Modifier.fillMaxWidth().height(side).align(Alignment.TopCenter).background(
@@ -682,7 +696,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     ImmersivePage(songs.firstOrNull()?.albumId, title) {
     LazyColumn(state = listState, contentPadding = PaddingValues(bottom = BarSpace)) {
         item(key = "header") {
-            DetailHeader(title, subtitle, songs.firstOrNull()?.albumId, title, onBack,
+            DetailHeader(title, subtitle, songs.firstOrNull()?.albumId, title, onBack, covers = songs.map { it.albumId }.distinct().take(4),
                 onPlay = { vm.play(songs, 0) },
                 onShuffle = { vm.play(songs, 0, shuffle = true) },
                 action = {
