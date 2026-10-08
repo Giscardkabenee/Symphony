@@ -13,13 +13,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.symphony.music.R
 
-/** Outfit, an open-licensed typeface (SIL Open Font License). */
+/** Google Sans Flex, the Pixel system typeface, released under the SIL Open Font License (latin set; other letters fall back to the system font). */
 val AppFont = FontFamily(
-    Font(R.font.outfit_regular, FontWeight.Normal),
-    Font(R.font.outfit_medium, FontWeight.Medium),
-    Font(R.font.outfit_semibold, FontWeight.SemiBold),
-    Font(R.font.outfit_bold, FontWeight.Bold),
-    Font(R.font.outfit_extrabold, FontWeight.ExtraBold),
+    Font(R.font.google_sans_flex_regular, FontWeight.Normal),
+    Font(R.font.google_sans_flex_medium, FontWeight.Medium),
+    Font(R.font.google_sans_flex_semibold, FontWeight.SemiBold),
+    Font(R.font.google_sans_flex_bold, FontWeight.Bold),
+    Font(R.font.google_sans_flex_extrabold, FontWeight.ExtraBold),
 )
 
 private val base = Typography()
