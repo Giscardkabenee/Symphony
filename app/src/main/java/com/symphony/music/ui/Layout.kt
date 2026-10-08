@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -97,39 +98,63 @@ private fun GroupLabel(text: String) {
 
 // ---------------------------------------------------------------- Home
 
+/** Facts the home lines can mention. */
+private class HomeFacts(
+    val songCount: Int,
+    val topArtist: String?,
+    val latest: String?,
+    val favorites: Int,
+    val forgotten: String?,
+    val playing: String?,
+    val hours: Double,
+)
+
 /**
- * Title and line under it for the home screen: they follow the time of day and the day of the week,
- * and change a little from one day (and one hour) to the next.
+ * Title and line under it for the home screen: many phrases for each moment of the day, a few for
+ * special days, and lines drawn from the library itself. They are shuffled anew each time Home opens.
  */
 @Composable
-private fun greeting(name: String, songCount: Int, topArtist: String?): Pair<List<String>, List<String>> {
+private fun greeting(name: String, facts: HomeFacts): Pair<List<String>, List<String>> {
     val now = remember { java.util.Calendar.getInstance() }
+    val random = remember { kotlin.random.Random(System.nanoTime()) }
     val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
     val day = now.get(java.util.Calendar.DAY_OF_WEEK)
-    val seed = now.get(java.util.Calendar.DAY_OF_YEAR)
     val who = if (name.isBlank()) "" else ", " + name.trim()
     val weekend = day == java.util.Calendar.SATURDAY || day == java.util.Calendar.SUNDAY
-    val titles = when {
-        day == java.util.Calendar.FRIDAY && hour >= 17 -> listOf(R.string.greet_friday, R.string.greet_evening_1)
-        weekend && hour in 7..11 -> listOf(R.string.greet_weekend, R.string.greet_morning_1)
-        hour in 5..8 -> listOf(R.string.greet_wake_1, R.string.greet_wake_2, R.string.greet_wake_3)
-        hour in 9..11 -> listOf(R.string.greet_morning_1, R.string.greet_morning_2)
-        hour in 12..13 -> listOf(R.string.greet_noon_1, R.string.greet_noon_2)
-        hour in 14..17 -> listOf(R.string.greet_afternoon_1, R.string.greet_afternoon_2)
-        hour in 18..21 -> listOf(R.string.greet_evening_1, R.string.greet_evening_2)
-        else -> listOf(R.string.greet_night_1, R.string.greet_night_2)
+    val slot = when (hour) {
+        in 5..8 -> R.array.hello_wake
+        in 9..11 -> R.array.hello_morning
+        in 12..13 -> R.array.hello_noon
+        in 14..17 -> R.array.hello_afternoon
+        in 18..21 -> R.array.hello_evening
+        else -> R.array.hello_night
     }
-    val lines = mutableListOf(stringResource(R.string.sub_enjoy), stringResource(R.string.sub_ready, songCount))
-    if (topArtist != null) lines += stringResource(R.string.sub_artist, topArtist)
-    when (hour) {
-        in 5..8 -> lines += stringResource(R.string.sub_wake)
-        in 22..23, in 0..4 -> lines += stringResource(R.string.sub_night)
+    val titles = stringArrayResource(slot).toMutableList()
+    when {
+        day == java.util.Calendar.MONDAY && hour in 5..13 -> titles += stringArrayResource(R.array.hello_monday)
+        day == java.util.Calendar.FRIDAY && hour >= 16 -> titles += stringArrayResource(R.array.hello_friday)
+        weekend && hour in 7..17 -> titles += stringArrayResource(R.array.hello_weekend)
+        day == java.util.Calendar.SUNDAY && hour >= 18 -> titles += stringArrayResource(R.array.hello_sunday_evening)
     }
-    // Today's pick first, then the other phrases of the moment; same for the lines under it.
-    val shift = seed % titles.size
-    val ordered = titles.indices.map { titles[(it + shift) % titles.size] }.map { stringResource(it, who) }
-    val lineShift = (seed + hour) % lines.size
-    return ordered to lines.indices.map { lines[(it + lineShift) % lines.size] }
+    val lines = stringArrayResource(R.array.lines_general).toMutableList()
+    lines += stringResource(R.string.sub_ready, facts.songCount)
+    if (facts.hours >= 0.1) lines += stringResource(R.string.sub_hours, String.format(java.util.Locale.getDefault(), "%.1f", facts.hours))
+    facts.topArtist?.let { lines += stringResource(R.string.sub_artist, it) }
+    facts.latest?.let { lines += stringResource(R.string.sub_latest, it) }
+    facts.forgotten?.let { lines += stringResource(R.string.sub_forgotten, it) }
+    facts.playing?.let { lines += stringResource(R.string.sub_playing, it) }
+    if (facts.favorites > 0) lines += stringResource(R.string.sub_favorites, facts.favorites)
+    lines += stringArrayResource(
+        when (hour) {
+            in 5..11 -> R.array.lines_morning
+            in 12..17 -> R.array.lines_day
+            in 18..21 -> R.array.lines_evening
+            else -> R.array.lines_night
+        }
+    )
+    return remember(name, titles.size, lines.size) {
+        titles.map { String.format(it, who) }.shuffled(random) to lines.shuffled(random)
+    }
 }
 
 /**
@@ -275,7 +300,18 @@ fun HomeScreen(
     val decades = remember(songs) {
         songs.filter { it.year in 1900..2100 }.groupBy { it.year / 10 * 10 }.toSortedMap().map { it.key to it.value }
     }
-    val (greetings, taglines) = greeting(settings.userName, songs.size, topArtist)
+    val (greetings, taglines) = greeting(
+        settings.userName,
+        HomeFacts(
+            songCount = songs.size,
+            topArtist = topArtist,
+            latest = added.firstOrNull()?.title,
+            favorites = settings.favorites.size,
+            forgotten = rediscover.firstOrNull()?.title,
+            playing = state.current?.artist?.takeIf { state.isPlaying },
+            hours = songs.sumOf { it.duration } / 3_600_000.0,
+        ),
+    )
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         stickyHeader {

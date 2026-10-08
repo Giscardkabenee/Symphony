@@ -256,4 +256,103 @@
     <string name="hp_failed">Impossible de récupérer ce profil</string>
     <string name="hp_credit">Corrections du projet AutoEq (licence MIT), d\'après les mesures d\'oratory1990, crinacle, Rtings et d\'autres. Sans effet sur les fichiers haute résolution quand la sortie 32 bits est activée.</string>
     <string name="hp_none">Aucun modèle choisi</string>
+    <string name="sub_hours">%1$s h de musique à portée de main</string>
+    <string name="sub_latest">Tout juste ajouté : %1$s</string>
+    <string name="sub_forgotten">Et si vous réécoutiez « %1$s » ?</string>
+    <string name="sub_playing">Toujours avec %1$s</string>
+    <string name="sub_favorites">%1$d titres dans vos favoris</string>
+    <string-array name="hello_wake">
+        <item>Bon réveil%1$s</item>
+        <item>Bien dormi%1$s ?</item>
+        <item>Un café et du son%1$s ?</item>
+        <item>Debout%1$s, la musique est prête</item>
+        <item>On démarre en douceur%1$s ?</item>
+        <item>Premier son de la journée%1$s ?</item>
+    </string-array>
+    <string-array name="hello_morning">
+        <item>Belle matinée%1$s</item>
+        <item>En forme ce matin%1$s ?</item>
+        <item>Une matinée en musique%1$s ?</item>
+        <item>Bonjour%1$s</item>
+        <item>Quel rythme pour ce matin%1$s ?</item>
+        <item>Prêt pour la journée%1$s ?</item>
+    </string-array>
+    <string-array name="hello_noon">
+        <item>Bon appétit%1$s</item>
+        <item>Pause musicale%1$s ?</item>
+        <item>Midi en musique%1$s ?</item>
+        <item>Une pause bien méritée%1$s</item>
+        <item>Un peu de son avec le repas%1$s ?</item>
+    </string-array>
+    <string-array name="hello_afternoon">
+        <item>Bon après-midi%1$s</item>
+        <item>Un peu de rythme%1$s ?</item>
+        <item>Coup de boost%1$s ?</item>
+        <item>Ça avance bien%1$s ?</item>
+        <item>Une playlist pour tenir%1$s ?</item>
+        <item>L\'après-midi vous appartient%1$s</item>
+    </string-array>
+    <string-array name="hello_evening">
+        <item>Bonsoir%1$s</item>
+        <item>On se détend%1$s ?</item>
+        <item>La soirée commence%1$s</item>
+        <item>Une soirée en musique%1$s ?</item>
+        <item>Belle soirée%1$s</item>
+        <item>Place à la rumba%1$s ?</item>
+    </string-array>
+    <string-array name="hello_night">
+        <item>Bonne nuit%1$s</item>
+        <item>Encore un titre%1$s ?</item>
+        <item>Les oiseaux de nuit%1$s</item>
+        <item>Tard ce soir%1$s ?</item>
+        <item>Doucement%1$s, il est tard</item>
+        <item>Un dernier pour la route%1$s ?</item>
+    </string-array>
+    <string-array name="hello_monday">
+        <item>Bon début de semaine%1$s</item>
+        <item>Lundi en musique%1$s ?</item>
+    </string-array>
+    <string-array name="hello_friday">
+        <item>C\'est vendredi%1$s !</item>
+        <item>Enfin le week-end%1$s !</item>
+        <item>Vendredi soir%1$s, on monte le son ?</item>
+    </string-array>
+    <string-array name="hello_weekend">
+        <item>Bon week-end%1$s</item>
+        <item>Week-end tranquille%1$s ?</item>
+        <item>Pas de réveil aujourd\'hui%1$s</item>
+    </string-array>
+    <string-array name="hello_sunday_evening">
+        <item>Dimanche soir tout doux%1$s</item>
+        <item>On savoure la fin du week-end%1$s ?</item>
+    </string-array>
+    <string-array name="lines_general">
+        <item>Savourez votre musique</item>
+        <item>Votre musique, rien que la vôtre</item>
+        <item>Un titre, et tout repart</item>
+        <item>Laissez-vous porter</item>
+        <item>La musique adoucit les mœurs</item>
+        <item>Montez le son</item>
+        <item>Écoutez ce qui vous fait du bien</item>
+    </string-array>
+    <string-array name="lines_morning">
+        <item>Votre musique vous attend</item>
+        <item>Un bon départ en musique</item>
+        <item>Le café, puis le son</item>
+    </string-array>
+    <string-array name="lines_day">
+        <item>Un Mix du jour tout neuf vous attend</item>
+        <item>Gardez le rythme</item>
+        <item>Une pause, un titre</item>
+    </string-array>
+    <string-array name="lines_evening">
+        <item>La soirée est à vous</item>
+        <item>Le Mix du jour est prêt</item>
+        <item>Détente garantie</item>
+    </string-array>
+    <string-array name="lines_night">
+        <item>De la douceur pour finir la journée</item>
+        <item>Pensez à la minuterie de sommeil</item>
+        <item>Le monde dort, la musique non</item>
+    </string-array>
 </resources>

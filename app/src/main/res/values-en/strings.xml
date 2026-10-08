@@ -255,4 +255,103 @@
     <string name="hp_failed">Could not get this profile</string>
     <string name="hp_credit">Corrections from the AutoEq project (MIT licence), based on measurements by oratory1990, crinacle, Rtings and others. No effect on high-resolution files when 32-bit output is on.</string>
     <string name="hp_none">No model chosen</string>
+    <string name="sub_hours">%1$s h of music at hand</string>
+    <string name="sub_latest">Just added: %1$s</string>
+    <string name="sub_forgotten">How about “%1$s” again?</string>
+    <string name="sub_playing">Still with %1$s</string>
+    <string name="sub_favorites">%1$d songs in your favourites</string>
+    <string-array name="hello_wake">
+        <item>Rise and shine%1$s</item>
+        <item>Slept well%1$s?</item>
+        <item>Coffee and tunes%1$s?</item>
+        <item>Up and at it%1$s, music\'s ready</item>
+        <item>Easing into the day%1$s?</item>
+        <item>First song of the day%1$s?</item>
+    </string-array>
+    <string-array name="hello_morning">
+        <item>Lovely morning%1$s</item>
+        <item>Feeling good this morning%1$s?</item>
+        <item>A musical morning%1$s?</item>
+        <item>Hello%1$s</item>
+        <item>What\'s the rhythm this morning%1$s?</item>
+        <item>Ready for the day%1$s?</item>
+    </string-array>
+    <string-array name="hello_noon">
+        <item>Enjoy your lunch%1$s</item>
+        <item>Music break%1$s?</item>
+        <item>Midday tunes%1$s?</item>
+        <item>A well-earned break%1$s</item>
+        <item>Some music with lunch%1$s?</item>
+    </string-array>
+    <string-array name="hello_afternoon">
+        <item>Good afternoon%1$s</item>
+        <item>Some rhythm%1$s?</item>
+        <item>Need a boost%1$s?</item>
+        <item>Going well%1$s?</item>
+        <item>A playlist to keep going%1$s?</item>
+        <item>The afternoon is yours%1$s</item>
+    </string-array>
+    <string-array name="hello_evening">
+        <item>Good evening%1$s</item>
+        <item>Time to unwind%1$s?</item>
+        <item>The evening begins%1$s</item>
+        <item>A musical evening%1$s?</item>
+        <item>Have a lovely evening%1$s</item>
+        <item>Rumba time%1$s?</item>
+    </string-array>
+    <string-array name="hello_night">
+        <item>Good night%1$s</item>
+        <item>One more song%1$s?</item>
+        <item>Night owl%1$s</item>
+        <item>Up late%1$s?</item>
+        <item>Easy now%1$s, it\'s late</item>
+        <item>One for the road%1$s?</item>
+    </string-array>
+    <string-array name="hello_monday">
+        <item>Have a good week%1$s</item>
+        <item>Monday in music%1$s?</item>
+    </string-array>
+    <string-array name="hello_friday">
+        <item>It\'s Friday%1$s!</item>
+        <item>Weekend at last%1$s!</item>
+        <item>Friday night%1$s, turn it up?</item>
+    </string-array>
+    <string-array name="hello_weekend">
+        <item>Happy weekend%1$s</item>
+        <item>Quiet weekend%1$s?</item>
+        <item>No alarm today%1$s</item>
+    </string-array>
+    <string-array name="hello_sunday_evening">
+        <item>Easy Sunday evening%1$s</item>
+        <item>Savouring the end of the weekend%1$s?</item>
+    </string-array>
+    <string-array name="lines_general">
+        <item>Enjoy your music</item>
+        <item>Your music, all yours</item>
+        <item>One song and you\'re back</item>
+        <item>Let the music carry you</item>
+        <item>Music soothes the soul</item>
+        <item>Turn it up</item>
+        <item>Play what makes you feel good</item>
+    </string-array>
+    <string-array name="lines_morning">
+        <item>Your music is waiting</item>
+        <item>A good start in music</item>
+        <item>Coffee first, then sound</item>
+    </string-array>
+    <string-array name="lines_day">
+        <item>A fresh Mix of the day awaits</item>
+        <item>Keep the rhythm</item>
+        <item>A break, a song</item>
+    </string-array>
+    <string-array name="lines_evening">
+        <item>The evening is yours</item>
+        <item>Your Mix of the day is ready</item>
+        <item>Relaxation guaranteed</item>
+    </string-array>
+    <string-array name="lines_night">
+        <item>Something soft to end the day</item>
+        <item>Remember the sleep timer</item>
+        <item>The world sleeps, the music doesn\'t</item>
+    </string-array>
 </resources>
