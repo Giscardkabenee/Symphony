@@ -70,6 +70,9 @@ data class AppSettings(
     val automix: Boolean = false,
     /** Length of the AutoMix cross, in seconds. */
     val automixSeconds: Int = 6,
+    /** AutoEq correction for the user's headphones, and whether it is on. */
+    val headphone: HeadphoneProfile? = null,
+    val headphoneOn: Boolean = true,
 )
 
 class Prefs(context: Context) {
@@ -106,6 +109,8 @@ class Prefs(context: Context) {
             userName = p[stringPreferencesKey("user_name")] ?: "Giscard",
             automix = p[booleanPreferencesKey(Flags.AUTOMIX)] ?: false,
             automixSeconds = (p[intPreferencesKey("automix_seconds")] ?: 6).coerceIn(2, 12),
+            headphone = HeadphoneProfile.decode(p[stringPreferencesKey("hp_profile")]),
+            headphoneOn = p[booleanPreferencesKey("hp_enabled")] ?: true,
         )
     }
 
@@ -118,6 +123,13 @@ class Prefs(context: Context) {
     suspend fun setEqLevels(levels: List<Int>) { store.edit { it[stringPreferencesKey("eq_levels")] = levels.joinToString(",") } }
 
     suspend fun setUserName(value: String) { store.edit { it[stringPreferencesKey("user_name")] = value.trim() } }
+
+    suspend fun setHeadphone(profile: HeadphoneProfile?) {
+        store.edit {
+            if (profile == null) it.remove(stringPreferencesKey("hp_profile")) else it[stringPreferencesKey("hp_profile")] = profile.encode()
+            it[booleanPreferencesKey("hp_enabled")] = true
+        }
+    }
 
     suspend fun setInt(name: String, value: Int) { store.edit { it[intPreferencesKey(name)] = value } }
 

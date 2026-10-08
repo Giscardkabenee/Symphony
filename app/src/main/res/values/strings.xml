@@ -244,4 +244,16 @@
     <string name="music_top_artist">Artiste le plus présent : %1$s (%2$d titres)</string>
     <string name="music_longest_album">Album le plus long : %1$s</string>
     <string name="share">Partager</string>
+    <string name="hp_title">Mes écouteurs</string>
+    <string name="hp_intro">Choisissez votre modèle : Symphony applique la correction calculée à partir de mesures en laboratoire, pour un son plus équilibré.</string>
+    <string name="hp_detail">%1$s · %2$d filtres</string>
+    <string name="hp_remove">Retirer</string>
+    <string name="hp_search">Modèle (Pixel Buds, AirPods, Sony…)</string>
+    <string name="hp_loading">Chargement de la liste des modèles…</string>
+    <string name="hp_offline">Connexion nécessaire la première fois</string>
+    <string name="hp_hint">%1$d modèles disponibles. Tapez au moins deux lettres.</string>
+    <string name="hp_applied">Correction appliquée : %1$s</string>
+    <string name="hp_failed">Impossible de récupérer ce profil</string>
+    <string name="hp_credit">Corrections du projet AutoEq (licence MIT), d\'après les mesures d\'oratory1990, crinacle, Rtings et d\'autres. Sans effet sur les fichiers haute résolution quand la sortie 32 bits est activée.</string>
+    <string name="hp_none">Aucun modèle choisi</string>
 </resources>

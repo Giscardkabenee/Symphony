@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.SurroundSound
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Usb
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -736,6 +737,8 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     var equalizer by remember { mutableStateOf(false) }
     if (equalizer) EqualizerSheet(vm) { equalizer = false }
+    var headphones by remember { mutableStateOf(false) }
+    if (headphones) HeadphoneSheet(vm) { headphones = false }
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = BarSpace)) {
         stickyHeader {
             Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -823,6 +826,28 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.equalizer), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
                         Text(stringResource(if (settings.eqEnabled) R.string.eq_on else R.string.eq_off), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { headphones = true }.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Rounded.Headphones, contentDescription = null)
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.hp_title), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                        val hp = settings.headphone
+                        Text(
+                            text = when {
+                                hp == null -> stringResource(R.string.hp_none)
+                                settings.headphoneOn -> hp.name
+                                else -> hp.name + " · " + stringResource(R.string.eq_off)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                     Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

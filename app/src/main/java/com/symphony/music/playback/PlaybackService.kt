@@ -67,7 +67,7 @@ class PlaybackService : MediaSessionService() {
         // The sample format is fixed when the player is built, so it is read once at start.
         val initial = runBlocking { Prefs(this@PlaybackService).flow.first() }
         PlaybackInfo.floatOutput.value = initial.floatOutput
-        val renderers = DefaultRenderersFactory(this).setEnableAudioFloatOutput(initial.floatOutput)
+        val renderers = SymphonyRenderers(this).setEnableAudioFloatOutput(initial.floatOutput)
         val player = ExoPlayer.Builder(this, renderers)
             .setAudioAttributes(attributes, true)
             .setHandleAudioBecomingNoisy(true)
@@ -108,7 +108,7 @@ class PlaybackService : MediaSessionService() {
         }
         PlaybackInfo.audioSessionId.value = audioSessionId
         // Second player for AutoMix: same sound path and effects, never takes audio focus.
-        val second = ExoPlayer.Builder(this, DefaultRenderersFactory(this).setEnableAudioFloatOutput(initial.floatOutput))
+        val second = ExoPlayer.Builder(this, SymphonyRenderers(this).setEnableAudioFloatOutput(initial.floatOutput))
             .setAudioAttributes(attributes, false)
             .build()
         second.audioSessionId = audioSessionId
@@ -140,6 +140,7 @@ class PlaybackService : MediaSessionService() {
                 applyOutputDevice()
                 applyEffects(it)
                 automix?.enabled = it.automix
+                HeadphoneEq.set(it.headphone, it.headphoneOn)
                 automix?.fadeMs = it.automixSeconds * 1000L
             }
         }
@@ -270,4 +271,18 @@ class PlaybackService : MediaSessionService() {
             return Futures.immediateFuture(resolved)
         }
     }
+}
+
+/** Standard renderers, with the headphone correction added to the audio path. */
+private class SymphonyRenderers(context: android.content.Context) : DefaultRenderersFactory(context) {
+    override fun buildAudioSink(
+        context: android.content.Context,
+        enableFloatOutput: Boolean,
+        enableAudioTrackPlaybackParams: Boolean,
+    ): androidx.media3.exoplayer.audio.AudioSink? =
+        androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            .setAudioProcessors(arrayOf<androidx.media3.common.audio.AudioProcessor>(ParametricEqProcessor()))
+            .build()
 }
