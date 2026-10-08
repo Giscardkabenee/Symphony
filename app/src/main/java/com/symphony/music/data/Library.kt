@@ -21,6 +21,8 @@ data class Song(
     val path: String,
     /** Bits per second when the system knows it, otherwise 0. */
     val bitrate: Int = 0,
+    /** Seconds since 1970 when the file last changed. */
+    val dateModified: Long = 0,
 ) {
     val uri: Uri get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
     val artUri: Uri get() = ArtOverrides.urls[albumId]?.let { Uri.parse(it) } ?: artworkUri(albumId)
@@ -75,6 +77,7 @@ object MusicRepository {
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.DATE_MODIFIED,
             MediaStore.Audio.Media.DATA,
         )
         // The bitrate column only exists from Android 11.
@@ -97,6 +100,7 @@ object MusicRepository {
                 val iYear = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
                 val iAdded = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
                 val iData = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                val iModified = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
                 val iBitrate = c.getColumnIndex("bitrate")
                 while (c.moveToNext()) {
                     val duration = c.getLong(iDuration)
@@ -114,6 +118,7 @@ object MusicRepository {
                         dateAdded = c.getLong(iAdded),
                         path = c.getString(iData) ?: "",
                         bitrate = if (iBitrate >= 0) c.getInt(iBitrate) else 0,
+                        dateModified = c.getLong(iModified),
                     )
                 }
             }

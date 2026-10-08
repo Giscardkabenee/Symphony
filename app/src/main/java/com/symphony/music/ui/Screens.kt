@@ -142,7 +142,7 @@ fun EmptyState(title: String, hint: String? = null) {
 }
 
 @Composable
-private fun AlbumCard(album: AlbumInfo, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun AlbumCard(album: AlbumInfo, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick)) {
         Artwork(album.id, album.title, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(14.dp))
         Spacer(Modifier.height(8.dp))
@@ -809,6 +809,25 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
             }
         }
         item { SettingsLabel(stringResource(R.string.appearance)) }
+        item {
+            // The name shown in the home greeting, saved a moment after typing stops.
+            var name by remember(settings.userName) { mutableStateOf(settings.userName) }
+            LaunchedEffect(name) {
+                kotlinx.coroutines.delay(600)
+                if (name.trim() != settings.userName) vm.setUserName(name)
+            }
+            SettingsCard {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(30) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.user_name)) },
+                    supportingText = { Text(stringResource(R.string.user_name_desc)) },
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+        }
         item {
             SettingsCard {
                 Column(Modifier.padding(16.dp)) {

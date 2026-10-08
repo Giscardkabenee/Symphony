@@ -27,6 +27,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import com.symphony.music.data.ArtistInfo
+import com.symphony.music.data.AlbumInfo
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -78,6 +88,37 @@ private fun GroupLabel(text: String) {
 
 // ---------------------------------------------------------------- Home
 
+/**
+ * Title and line under it for the home screen: they follow the time of day and the day of the week,
+ * and change a little from one day (and one hour) to the next.
+ */
+@Composable
+private fun greeting(name: String, songCount: Int, topArtist: String?): Pair<String, String> {
+    val now = remember { java.util.Calendar.getInstance() }
+    val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
+    val day = now.get(java.util.Calendar.DAY_OF_WEEK)
+    val seed = now.get(java.util.Calendar.DAY_OF_YEAR)
+    val who = if (name.isBlank()) "" else ", " + name.trim()
+    val weekend = day == java.util.Calendar.SATURDAY || day == java.util.Calendar.SUNDAY
+    val titles = when {
+        day == java.util.Calendar.FRIDAY && hour >= 17 -> listOf(R.string.greet_friday, R.string.greet_evening_1)
+        weekend && hour in 7..11 -> listOf(R.string.greet_weekend, R.string.greet_morning_1)
+        hour in 5..8 -> listOf(R.string.greet_wake_1, R.string.greet_wake_2, R.string.greet_wake_3)
+        hour in 9..11 -> listOf(R.string.greet_morning_1, R.string.greet_morning_2)
+        hour in 12..13 -> listOf(R.string.greet_noon_1, R.string.greet_noon_2)
+        hour in 14..17 -> listOf(R.string.greet_afternoon_1, R.string.greet_afternoon_2)
+        hour in 18..21 -> listOf(R.string.greet_evening_1, R.string.greet_evening_2)
+        else -> listOf(R.string.greet_night_1, R.string.greet_night_2)
+    }
+    val lines = mutableListOf(stringResource(R.string.sub_enjoy), stringResource(R.string.sub_ready, songCount))
+    if (topArtist != null) lines += stringResource(R.string.sub_artist, topArtist)
+    when (hour) {
+        in 5..8 -> lines += stringResource(R.string.sub_wake)
+        in 22..23, in 0..4 -> lines += stringResource(R.string.sub_night)
+    }
+    return stringResource(titles[seed % titles.size], who) to lines[(seed + hour) % lines.size]
+}
+
 /** One of the six shortcuts at the top of the home screen. */
 @Composable
 private fun QuickTile(title: String, modifier: Modifier, onClick: () -> Unit, art: @Composable () -> Unit) {
@@ -123,12 +164,12 @@ fun HomeScreen(
         val plays = artists.associateWith { a -> a.songs.sumOf { settings.playCounts[it.id] ?: 0 } }
         artists.sortedWith(compareByDescending<com.symphony.music.data.ArtistInfo> { plays[it] ?: 0 }.thenByDescending { it.songs.size }).take(10)
     }
-    val hour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
-    val greeting = stringResource(if (hour in 5..17) R.string.greet_day else R.string.greet_evening)
+    val topArtist = if (settings.playCounts.isEmpty()) null else topArtists.firstOrNull()?.name
+    val (greeting, tagline) = greeting(settings.userName, songs.size, topArtist)
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         stickyHeader {
-            ScreenTitle(greeting, stringResource(R.string.home_count, songs.size)) {
+            ScreenTitle(greeting, tagline) {
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
                 }
@@ -228,7 +269,73 @@ private fun Pill(text: String, selected: Boolean, modifier: Modifier = Modifier,
     }
 }
 
-/** Everything stored on the phone: songs, albums, artists and playlists behind four pills. */
+private val sortLabels = listOf(R.string.sort_az, R.string.sort_za, R.string.sort_artist, R.string.sort_added, R.string.sort_modified, R.string.sort_duration)
+
+private fun sortSongs(list: List<Song>, sort: Int): List<Song> = when (sort) {
+    1 -> list.sortedByDescending { it.title.lowercase() }
+    2 -> list.sortedWith(compareBy<Song> { it.artist.lowercase() }.thenBy { it.title.lowercase() })
+    3 -> list.sortedByDescending { it.dateAdded }
+    4 -> list.sortedByDescending { it.dateModified }
+    5 -> list.sortedByDescending { it.duration }
+    else -> list.sortedBy { it.title.lowercase() }
+}
+
+private fun sortAlbums(list: List<AlbumInfo>, sort: Int): List<AlbumInfo> = when (sort) {
+    1 -> list.sortedByDescending { it.title.lowercase() }
+    2 -> list.sortedWith(compareBy<AlbumInfo> { it.artist.lowercase() }.thenBy { it.title.lowercase() })
+    3 -> list.sortedByDescending { a -> a.songs.maxOf { it.dateAdded } }
+    4 -> list.sortedByDescending { a -> a.songs.maxOf { it.dateModified } }
+    5 -> list.sortedByDescending { a -> a.songs.sumOf { it.duration } }
+    else -> list.sortedBy { it.title.lowercase() }
+}
+
+private fun sortArtists(list: List<ArtistInfo>, sort: Int): List<ArtistInfo> = when (sort) {
+    1 -> list.sortedByDescending { it.name.lowercase() }
+    3 -> list.sortedByDescending { a -> a.songs.maxOf { it.dateAdded } }
+    4 -> list.sortedByDescending { a -> a.songs.maxOf { it.dateModified } }
+    5 -> list.sortedByDescending { a -> a.songs.sumOf { it.duration } }
+    else -> list.sortedBy { it.name.lowercase() }
+}
+
+/** "Play all" and "Shuffle" side by side. */
+@Composable
+private fun PlayButtons(onPlay: () -> Unit, onShuffle: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Button(
+            onClick = onPlay,
+            modifier = Modifier.weight(1f).height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
+        ) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.play_all), fontWeight = FontWeight.Bold)
+        }
+        FilledTonalButton(onClick = onShuffle, modifier = Modifier.weight(1f).height(48.dp)) {
+            Icon(Icons.Rounded.Shuffle, contentDescription = null)
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.shuffle), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** Row for an album or an artist in list view. */
+@Composable
+private fun EntryRow(title: String, detail: String, onClick: () -> Unit, art: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        art()
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+            Text(detail, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Everything stored on the phone: songs, albums, artists and playlists behind four pills, sortable, as a grid or a list. */
 @Composable
 fun MusicScreen(
     vm: PlayerViewModel,
@@ -243,14 +350,53 @@ fun MusicScreen(
     val settings by vm.settings.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    // The pill last used is remembered between launches.
+    // Pill, order and layout are remembered between launches.
     val store = remember { context.getSharedPreferences("ui", Context.MODE_PRIVATE) }
     var tab by remember { mutableIntStateOf(store.getInt("music_tab", 0).coerceIn(0, 3)) }
+    var sort by remember { mutableIntStateOf(store.getInt("music_sort", 0).coerceIn(0, 5)) }
+    var grids by remember {
+        mutableStateOf(List(3) { i -> store.getBoolean("music_grid_$i", i != 0) })
+    }
+    var sortOpen by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     val labels = listOf(R.string.songs, R.string.tab_albums, R.string.tab_artists, R.string.playlists)
+    val sortedSongs = remember(songs, sort) { sortSongs(songs, sort) }
+    val sortedAlbums = remember(albums, sort) { sortAlbums(albums, sort) }
+    val sortedArtists = remember(artists, sort) { sortArtists(artists, sort) }
+    val grid = tab < 3 && grids[tab]
 
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle(stringResource(R.string.tab_music), stringResource(R.string.library_summary, songs.size, albums.size, artists.size))
+        ScreenTitle(stringResource(R.string.tab_music), stringResource(R.string.library_summary, songs.size, albums.size, artists.size)) {
+            if (tab < 3) {
+                IconButton(onClick = {
+                    grids = grids.toMutableList().also { it[tab] = !it[tab] }
+                    store.edit().putBoolean("music_grid_$tab", grids[tab]).apply()
+                }) {
+                    Icon(
+                        imageVector = if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
+                        contentDescription = stringResource(if (grid) R.string.view_list else R.string.view_grid),
+                    )
+                }
+                Box {
+                    IconButton(onClick = { sortOpen = true }) {
+                        Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = stringResource(R.string.sort))
+                    }
+                    DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }, shape = RoundedCornerShape(18.dp)) {
+                        sortLabels.forEachIndexed { i, label ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(label), fontWeight = if (i == sort) FontWeight.Bold else FontWeight.Normal) },
+                                trailingIcon = { if (i == sort) Icon(Icons.Rounded.Check, contentDescription = null) },
+                                onClick = {
+                                    sort = i
+                                    store.edit().putInt("music_sort", i).apply()
+                                    sortOpen = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
         // Four equal pills, so none is cut off at the edge.
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             labels.forEachIndexed { i, label ->
@@ -260,10 +406,95 @@ fun MusicScreen(
                 }
             }
         }
-        when (tab) {
-            1 -> AlbumsScreen(vm, onAlbum)
-            2 -> ArtistsScreen(vm, onArtist)
-            3 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
+        if (songs.isEmpty() && tab < 3) {
+            EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint))
+        } else when {
+            // ---- Songs
+            tab == 0 && grid -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(150.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = BarSpace),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) })
+                }
+                items(sortedSongs.size) { i ->
+                    val song = sortedSongs[i]
+                    val active = state.current?.id == song.id
+                    Column(Modifier.clip(RoundedCornerShape(14.dp)).clickable { vm.play(sortedSongs, i) }) {
+                        Artwork(song.albumId, song.album, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(14.dp))
+                        Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                Text(song.artist + " · " + formatTime(song.duration), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = { onMore(song) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+            tab == 0 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
+                item {
+                    PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) }, Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
+                }
+                items(sortedSongs.size) { i ->
+                    val song = sortedSongs[i]
+                    SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(sortedSongs, i) }
+                }
+            }
+            // ---- Albums
+            tab == 1 && grid -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(150.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = BarSpace),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                items(sortedAlbums.size) { i ->
+                    val album = sortedAlbums[i]
+                    AlbumCard(album) { onAlbum(album.id) }
+                }
+            }
+            tab == 1 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
+                items(sortedAlbums.size) { i ->
+                    val album = sortedAlbums[i]
+                    EntryRow(album.title, album.artist + " · " + stringResource(R.string.songs_count, album.songs.size), { onAlbum(album.id) }) {
+                        Artwork(album.id, album.title, Modifier.size(56.dp), RoundedCornerShape(10.dp))
+                    }
+                }
+            }
+            // ---- Artists
+            tab == 2 && grid -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(104.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = BarSpace),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                items(sortedArtists.size) { i ->
+                    val artist = sortedArtists[i]
+                    Column(
+                        modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { onArtist(artist.name) },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ArtistAvatar(artist.name, settings.artistPhotos, Modifier.fillMaxWidth().aspectRatio(1f))
+                        Spacer(Modifier.height(8.dp))
+                        Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.songs_count, artist.songs.size), maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            tab == 2 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
+                items(sortedArtists.size) { i ->
+                    val artist = sortedArtists[i]
+                    EntryRow(artist.name, stringResource(R.string.songs_count, artist.songs.size), { onArtist(artist.name) }) {
+                        ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(56.dp))
+                    }
+                }
+            }
+            // ---- Playlists
+            else -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable { creating = true }.padding(horizontal = 20.dp, vertical = 8.dp),
@@ -283,34 +514,6 @@ fun MusicScreen(
                 items(names.size) { i ->
                     val name = names[i]
                     PlaylistRow(name, settings.playlists[name]?.size ?: 0, Icons.Rounded.QueueMusic) { onPlaylist(name) }
-                }
-            }
-            else -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
-                if (songs.isEmpty()) {
-                    item { EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint)) }
-                } else {
-                    item {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(
-                                onClick = { vm.play(songs, 0) },
-                                modifier = Modifier.weight(1f).height(48.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
-                            ) {
-                                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.play_all), fontWeight = FontWeight.Bold)
-                            }
-                            FilledTonalButton(onClick = { vm.play(songs, 0, shuffle = true) }, modifier = Modifier.weight(1f).height(48.dp)) {
-                                Icon(Icons.Rounded.Shuffle, contentDescription = null)
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.shuffle), fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                    items(songs.size) { i ->
-                        val song = songs[i]
-                        SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(songs, i) }
-                    }
                 }
             }
         }

@@ -64,6 +64,8 @@ data class AppSettings(
     /** Strength of the bass boost and of the stereo widening, 0 to 1000. */
     val bassBoost: Int = 0,
     val virtualizer: Int = 0,
+    /** First name used in the home greeting; empty for none. */
+    val userName: String = "Giscard",
 )
 
 class Prefs(context: Context) {
@@ -97,6 +99,7 @@ class Prefs(context: Context) {
                 .let { list -> List(EqBands) { i -> (list.getOrNull(i) ?: 0).coerceIn(-12, 12) } },
             bassBoost = (p[intPreferencesKey("bass_boost")] ?: 0).coerceIn(0, 1000),
             virtualizer = (p[intPreferencesKey("virtualizer")] ?: 0).coerceIn(0, 1000),
+            userName = p[stringPreferencesKey("user_name")] ?: "Giscard",
         )
     }
 
@@ -107,6 +110,8 @@ class Prefs(context: Context) {
     suspend fun setSkipSilence(value: Boolean) { store.edit { it[SKIP_SILENCE] = value } }
 
     suspend fun setEqLevels(levels: List<Int>) { store.edit { it[stringPreferencesKey("eq_levels")] = levels.joinToString(",") } }
+
+    suspend fun setUserName(value: String) { store.edit { it[stringPreferencesKey("user_name")] = value.trim() } }
 
     suspend fun setInt(name: String, value: Int) { store.edit { it[intPreferencesKey(name)] = value } }
 
