@@ -403,10 +403,10 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) ->
                         Text(now.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Soft)
                     }
                     if (now.hasOptions()) Box(
-                        modifier = Modifier.size(44.dp).liquidDrop(CircleShape).clickable { onMore(now) },
+                        modifier = Modifier.size(40.dp).playerChip().clickable { onMore(now) },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.more))
+                        Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.more), tint = Color.White, modifier = Modifier.size(22.dp))
                     }
                 }
             }
@@ -560,10 +560,10 @@ private fun Controls(
             }
             Spacer(Modifier.width(12.dp))
             if (song.hasOptions()) Box(
-                modifier = Modifier.size(44.dp).liquidDrop(CircleShape).clickable(onClick = onMore),
+                modifier = Modifier.size(40.dp).playerChip().clickable(onClick = onMore),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.more))
+                Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.more), tint = Color.White, modifier = Modifier.size(22.dp))
             }
         }
 

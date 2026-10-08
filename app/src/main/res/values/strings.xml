@@ -243,4 +243,5 @@
     <string name="music_latest">Dernier ajout : %1$s</string>
     <string name="music_top_artist">Artiste le plus présent : %1$s (%2$d titres)</string>
     <string name="music_longest_album">Album le plus long : %1$s</string>
+    <string name="share">Partager</string>
 </resources>

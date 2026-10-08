@@ -257,28 +257,28 @@ private fun SongMenu(
     val local = song.id >= 0
     val favorite = song.id in settings.favorites
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
-            Text(song.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp))
-            Text(song.artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp))
-            // A radio station can only be kept as a favourite; the rest applies to songs on the phone.
-            if (local) MenuItem(Icons.Rounded.SkipNext, stringResource(R.string.play_next)) {
+    val context = LocalContext.current
+    val nextLabel = stringResource(R.string.queued_next)
+    val queueLabel = stringResource(R.string.queued_end)
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+        com.symphony.music.ui.SongSheet(
+            song = song,
+            favorite = favorite,
+            onFavorite = { vm.toggleFavorite(song.id) },
+            onPlayNext = {
                 vm.playNext(song)
+                android.widget.Toast.makeText(context, String.format(nextLabel, song.title), android.widget.Toast.LENGTH_SHORT).show()
                 onDismiss()
-            }
-            MenuItem(
-                icon = if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                text = stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
-            ) {
-                vm.toggleFavorite(song.id)
+            },
+            onQueue = {
+                vm.addToQueue(song)
+                android.widget.Toast.makeText(context, String.format(queueLabel, song.title), android.widget.Toast.LENGTH_SHORT).show()
                 onDismiss()
-            }
-            if (local) {
-                MenuItem(Icons.Rounded.PlaylistAdd, stringResource(R.string.add_to_playlist)) { picking = true }
-                MenuItem(Icons.Rounded.Album, stringResource(R.string.go_to_album), onAlbum)
-                MenuItem(Icons.Rounded.Person, stringResource(R.string.go_to_artist), onArtist)
-            }
-        }
+            },
+            onPlaylist = { picking = true },
+            onAlbum = onAlbum,
+            onArtist = onArtist,
+        )
     }
 
     if (picking) {

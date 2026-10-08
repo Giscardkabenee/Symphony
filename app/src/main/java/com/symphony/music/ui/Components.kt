@@ -190,6 +190,12 @@ fun QueueSwipe(onPlayNext: () -> Unit, onAddToQueue: () -> Unit, content: @Compo
     ) { content() }
 }
 
+/** Round button over the player's backdrop: a soft frosted disc with a hairline highlight, no heavy rim. */
+fun Modifier.playerChip(): Modifier = this
+    .clip(CircleShape)
+    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.12f))))
+    .border(0.6.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+
 /** Only songs on the phone have options and a favourite state. */
 fun Song.hasOptions(): Boolean = id >= 0
 
