@@ -29,7 +29,6 @@ object Flags {
     const val ARTIST_PHOTOS = "artist_photos"
     const val FLOAT_OUTPUT = "float_output"
     const val USB_DAC = "usb_dac"
-    const val WIFI_ONLY = "wifi_only_downloads"
 }
 
 /** Number of bands the equalizer screen offers. */
@@ -54,22 +53,11 @@ data class AppSettings(
     val artistPhotos: Boolean = true,
     val floatOutput: Boolean = false,
     val usbDac: Boolean = false,
-    val wifiOnly: Boolean = false,
     val favorites: List<Long> = emptyList(),
     val recents: List<Long> = emptyList(),
     /** Song id to number of times it was started. */
     val playCounts: Map<Long, Int> = emptyMap(),
     val playlists: Map<String, List<Long>> = emptyMap(),
-    /** Favourite radio stations. */
-    val stations: List<Station> = emptyList(),
-    /** Podcasts the user follows. */
-    val podcasts: List<Podcast> = emptyList(),
-    /** Where each started episode was left, in milliseconds. */
-    val episodePositions: Map<Long, Long> = emptyMap(),
-    /** Episodes saved on the phone, newest first. */
-    val downloads: List<DownloadedEpisode> = emptyList(),
-    /** The podcast episode last listened to, offered again on the home screen. */
-    val lastEpisode: DownloadedEpisode? = null,
     val eqEnabled: Boolean = false,
     /** Gain of each equalizer band, in dB. */
     val eqLevels: List<Int> = List(EqBands) { 0 },
@@ -100,16 +88,10 @@ class Prefs(context: Context) {
             artistPhotos = p[booleanPreferencesKey(Flags.ARTIST_PHOTOS)] ?: true,
             floatOutput = p[booleanPreferencesKey(Flags.FLOAT_OUTPUT)] ?: false,
             usbDac = p[booleanPreferencesKey(Flags.USB_DAC)] ?: false,
-            wifiOnly = p[booleanPreferencesKey(Flags.WIFI_ONLY)] ?: false,
             favorites = decodeIds(p[FAVORITES]),
             recents = decodeIds(p[RECENTS]),
             playCounts = decodeCounts(p[PLAY_COUNTS]),
             playlists = decodePlaylists(p[PLAYLISTS]),
-            stations = decodeStations(p[STATIONS]),
-            podcasts = decodePodcasts(p[PODCASTS]),
-            episodePositions = decodePositions(p[EPISODE_POSITIONS]),
-            downloads = decodeDownloads(p[DOWNLOADS]),
-            lastEpisode = decodeDownloads(p[LAST_EPISODE]).firstOrNull(),
             eqEnabled = p[booleanPreferencesKey("eq_enabled")] ?: false,
             eqLevels = (p[stringPreferencesKey("eq_levels")] ?: "").split(',').mapNotNull { it.toIntOrNull() }
                 .let { list -> List(EqBands) { i -> (list.getOrNull(i) ?: 0).coerceIn(-12, 12) } },
@@ -134,59 +116,6 @@ class Prefs(context: Context) {
         store.edit { p ->
             val ids = decodeIds(p[FAVORITES])
             p[FAVORITES] = encodeIds(if (id in ids) ids - id else listOf(id) + ids)
-        }
-    }
-
-    suspend fun toggleStation(station: Station) {
-        store.edit { p ->
-            val list = decodeStations(p[STATIONS])
-            val next = if (list.any { it.id == station.id }) list.filter { it.id != station.id } else listOf(station) + list
-            val array = JSONArray()
-            for (s in next) {
-                array.put(
-                    JSONObject().put("id", s.id).put("name", s.name).put("url", s.url).put("icon", s.icon)
-                        .put("country", s.country).put("tags", s.tags).put("bitrate", s.bitrate)
-                )
-            }
-            p[STATIONS] = array.toString()
-        }
-    }
-
-    suspend fun togglePodcast(podcast: Podcast) {
-        store.edit { p ->
-            val list = decodePodcasts(p[PODCASTS])
-            val next = if (list.any { it.id == podcast.id }) list.filter { it.id != podcast.id } else listOf(podcast) + list
-            val array = JSONArray()
-            for (item in next) {
-                array.put(JSONObject().put("id", item.id).put("title", item.title).put("author", item.author).put("feed", item.feedUrl).put("art", item.art))
-            }
-            p[PODCASTS] = array.toString()
-        }
-    }
-
-    suspend fun addDownload(item: DownloadedEpisode) {
-        store.edit { p ->
-            val list = listOf(item) + decodeDownloads(p[DOWNLOADS]).filter { it.episode.id != item.episode.id }
-            p[DOWNLOADS] = encodeDownloads(list)
-        }
-    }
-
-    suspend fun setLastEpisode(item: DownloadedEpisode?) {
-        store.edit { p -> if (item == null) p.remove(LAST_EPISODE) else p[LAST_EPISODE] = encodeDownloads(listOf(item)) }
-    }
-
-    suspend fun removeDownload(id: Long) {
-        store.edit { p -> p[DOWNLOADS] = encodeDownloads(decodeDownloads(p[DOWNLOADS]).filter { it.episode.id != id }) }
-    }
-
-    suspend fun saveEpisodePosition(id: Long, positionMs: Long) {
-        store.edit { p ->
-            val map = LinkedHashMap(decodePositions(p[EPISODE_POSITIONS]))
-            map.remove(id)
-            map[id] = positionMs
-            // Keep the hundred most recent episodes.
-            val recent = map.entries.toList().takeLast(100)
-            p[EPISODE_POSITIONS] = recent.joinToString(",") { "${it.key}:${it.value}" }
         }
     }
 
@@ -237,81 +166,9 @@ class Prefs(context: Context) {
         val RECENTS = stringPreferencesKey("recents")
         val PLAY_COUNTS = stringPreferencesKey("play_counts")
         val PLAYLISTS = stringPreferencesKey("playlists")
-        val STATIONS = stringPreferencesKey("radio_stations")
-        val PODCASTS = stringPreferencesKey("podcasts")
-        val DOWNLOADS = stringPreferencesKey("podcast_downloads")
-        val LAST_EPISODE = stringPreferencesKey("last_episode")
-        val EPISODE_POSITIONS = stringPreferencesKey("episode_positions")
 
         fun decodeIds(raw: String?): List<Long> =
             raw?.split(',')?.mapNotNull { it.trim().toLongOrNull() } ?: emptyList()
-
-        fun decodeStations(raw: String?): List<Station> {
-            if (raw.isNullOrBlank()) return emptyList()
-            return try {
-                val array = JSONArray(raw)
-                (0 until array.length()).map { i ->
-                    val o = array.getJSONObject(i)
-                    Station(o.getLong("id"), o.optString("name"), o.optString("url"), o.optString("icon"), o.optString("country"), o.optString("tags"), o.optInt("bitrate"))
-                }
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
-
-        fun decodePodcasts(raw: String?): List<Podcast> {
-            if (raw.isNullOrBlank()) return emptyList()
-            return try {
-                val array = JSONArray(raw)
-                (0 until array.length()).map { i ->
-                    val o = array.getJSONObject(i)
-                    Podcast(o.getLong("id"), o.optString("title"), o.optString("author"), o.optString("feed"), o.optString("art"))
-                }
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
-
-        fun encodeDownloads(list: List<DownloadedEpisode>): String {
-            val array = JSONArray()
-            for (item in list) {
-                array.put(
-                    JSONObject()
-                        .put("id", item.episode.id).put("title", item.episode.title).put("url", item.episode.url)
-                        .put("art", item.episode.art).put("duration", item.episode.durationMs).put("date", item.episode.date)
-                        .put("pid", item.podcast.id).put("ptitle", item.podcast.title).put("pauthor", item.podcast.author)
-                        .put("pfeed", item.podcast.feedUrl).put("part", item.podcast.art)
-                )
-            }
-            return array.toString()
-        }
-
-        fun decodeDownloads(raw: String?): List<DownloadedEpisode> {
-            if (raw.isNullOrBlank()) return emptyList()
-            return try {
-                val array = JSONArray(raw)
-                (0 until array.length()).map { i ->
-                    val o = array.getJSONObject(i)
-                    DownloadedEpisode(
-                        Podcast(o.optLong("pid"), o.optString("ptitle"), o.optString("pauthor"), o.optString("pfeed"), o.optString("part")),
-                        Episode(o.getLong("id"), o.optString("title"), o.optString("url"), o.optString("art"), o.optLong("duration"), o.optString("date")),
-                    )
-                }
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
-
-        fun decodePositions(raw: String?): Map<Long, Long> {
-            if (raw.isNullOrBlank()) return emptyMap()
-            val out = LinkedHashMap<Long, Long>()
-            for (part in raw.split(',')) {
-                val id = part.substringBefore(':').toLongOrNull() ?: continue
-                val position = part.substringAfter(':', "").toLongOrNull() ?: continue
-                out[id] = position
-            }
-            return out
-        }
 
         fun decodeCounts(raw: String?): Map<Long, Int> {
             if (raw.isNullOrBlank()) return emptyMap()

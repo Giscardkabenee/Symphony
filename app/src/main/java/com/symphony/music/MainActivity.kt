@@ -78,18 +78,13 @@ import dev.chrisbanes.haze.hazeSource
 import com.symphony.music.data.Song
 import com.symphony.music.ui.AlbumScreen
 import com.symphony.music.ui.ArtistScreen
-import com.symphony.music.ui.DiscoverScreen
 import com.symphony.music.ui.FloatingBar
 import com.symphony.music.ui.HomeScreen
 import com.symphony.music.ui.MusicScreen
-import com.symphony.music.ui.OnlineScreen
 import com.symphony.music.ui.LocalHaze
 import com.symphony.music.ui.NewPlaylistDialog
 import com.symphony.music.ui.NowPlaying
 import com.symphony.music.ui.PlaylistScreen
-import com.symphony.music.ui.PodcastScreen
-import com.symphony.music.ui.PodcastsScreen
-import com.symphony.music.ui.RadioScreen
 import com.symphony.music.ui.SearchScreen
 import com.symphony.music.ui.SettingsScreen
 import com.symphony.music.ui.SymphonyTheme
@@ -177,16 +172,9 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
 
     Box(Modifier.fillMaxSize()) {
         NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
-            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum, { nav.openTab("music") }) { nav.openTab("online") } }
+            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum) { nav.openTab("music") } }
             composable("music") { MusicScreen(vm, openAlbum, openArtist, openPlaylist, openMenu) }
-            composable("online") { OnlineScreen(vm, { nav.navigate("radio") }, { nav.navigate("podcasts") }, { nav.navigate("podcast/$it") }) { nav.navigate("discover") } }
-            composable("search") { SearchScreen(vm, openAlbum, openArtist, { nav.navigate("podcast/$it") }, openMenu) }
-            composable("podcasts") { PodcastsScreen(vm, { nav.popBackStack() }) { nav.navigate("podcast/$it") } }
-            composable("podcast/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
-                PodcastScreen(vm, e.arguments?.getLong("id") ?: 0L) { nav.popBackStack() }
-            }
-            composable("discover") { DiscoverScreen(vm) { nav.popBackStack() } }
-            composable("radio") { RadioScreen(vm) { nav.popBackStack() } }
+            composable("search") { SearchScreen(vm, openAlbum, openArtist, openMenu) }
             composable("settings") { SettingsScreen(vm) { nav.popBackStack() } }
             composable("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 AlbumScreen(vm, e.arguments?.getLong("id") ?: 0L, { nav.popBackStack() }, openMenu)
@@ -204,8 +192,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
         FloatingBar(
             state = state,
             glass = settings.liquidGlass,
-            // Pages opened from "En ligne" keep that tab lit.
-            route = if (route == "radio" || route == "podcasts" || route == "discover" || route == "podcast/{id}") "online" else route,
+            route = route,
             onTab = { nav.openTab(it) },
             onSearch = { nav.openTab("search") },
             onOpenPlayer = { playerOpen = true },
@@ -268,7 +255,7 @@ private fun SongMenu(
     var picking by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     val local = song.id >= 0
-    val favorite = if (local) song.id in settings.favorites else settings.stations.any { it.id == song.id }
+    val favorite = song.id in settings.favorites
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {

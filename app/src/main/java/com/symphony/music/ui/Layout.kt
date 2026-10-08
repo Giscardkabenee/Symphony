@@ -41,13 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.symphony.music.PlayerViewModel
 import com.symphony.music.R
-import com.symphony.music.data.CatalogTrack
-import com.symphony.music.data.DeezerSearch
-import com.symphony.music.data.Podcast
-import com.symphony.music.data.PodcastApi
-import com.symphony.music.data.RadioApi
 import com.symphony.music.data.Song
-import com.symphony.music.data.Station
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -89,7 +83,6 @@ fun HomeScreen(
     onStack: (String) -> Unit,
     onAlbum: (Long) -> Unit,
     onMusic: () -> Unit,
-    onOnline: () -> Unit,
 ) {
     val songs by vm.songs.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
@@ -107,39 +100,22 @@ fun HomeScreen(
                 }
             }
         }
-        // What is in the player; else the podcast episode left unfinished; else the last song listened to.
+        // What is in the player, or else the last song listened to.
         val current = state.current
-        val episode = if (current == null) settings.lastEpisode else null
-        val resume = current ?: episode?.let { it.episode.toSong(it.podcast) } ?: recent.firstOrNull()
+        val resume = current ?: recent.firstOrNull()
         if (resume != null) {
-            val position = episode?.let { settings.episodePositions[it.episode.id] } ?: 0L
             item {
-                val detail = when {
-                    episode != null && position > 0 -> stringResource(R.string.podcast) + " · " + stringResource(R.string.podcast_resume, formatTime(position))
-                    episode != null -> stringResource(R.string.podcast) + " · " + resume.artist
-                    else -> resume.artist
-                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 8.dp)
                         .clip(RoundedCornerShape(22.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .clickable {
-                            when {
-                                current != null -> vm.toggle()
-                                episode != null -> vm.playEpisode(episode.podcast, episode.episode)
-                                else -> vm.play(recent, 0)
-                            }
-                        }
+                        .clickable { if (current != null) vm.toggle() else vm.play(recent, 0) }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (episode != null) {
-                        WebArt(episode.episode.art.ifBlank { episode.podcast.art }, episode.podcast.title, Modifier.size(60.dp), RoundedCornerShape(14.dp))
-                    } else {
-                        Artwork(resume.albumId, resume.album, Modifier.size(60.dp), RoundedCornerShape(14.dp))
-                    }
+                    Artwork(resume.albumId, resume.album, Modifier.size(60.dp), RoundedCornerShape(14.dp))
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -150,7 +126,7 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(resume.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text(detail, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(resume.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.width(10.dp))
                     Box(Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface), contentAlignment = Alignment.Center) {
@@ -172,24 +148,6 @@ fun HomeScreen(
                     item { StackCard(stringResource(R.string.recently_played), recent) { onStack(RECENT_KEY) } }
                     item { StackCard(stringResource(R.string.recently_added), added) { onStack(ADDED_KEY) } }
                     item { StackCard(stringResource(R.string.most_played), most) { onStack(MOST_KEY) } }
-                }
-            }
-        }
-        if (settings.stations.isNotEmpty()) {
-            item { SectionLink(stringResource(R.string.favorite_radios), stringResource(R.string.see_all), onOnline) }
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(settings.stations.size) { i ->
-                        val station = settings.stations[i]
-                        Column(
-                            modifier = Modifier.width(76.dp).clip(RoundedCornerShape(14.dp)).clickable { vm.playStation(station) },
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            WebArt(station.icon, station.name, Modifier.size(68.dp), CircleShape)
-                            Spacer(Modifier.height(6.dp))
-                            Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                        }
-                    }
                 }
             }
         }
@@ -326,95 +284,14 @@ fun MusicScreen(
     }
 }
 
-// ---------------------------------------------------------------- Online
-
-/** Everything that needs a connection: radios, podcasts and the catalogue. */
-@Composable
-fun OnlineScreen(
-    vm: PlayerViewModel,
-    onRadio: () -> Unit,
-    onPodcasts: () -> Unit,
-    onPodcast: (Long) -> Unit,
-    onDiscover: () -> Unit,
-) {
-    val settings by vm.settings.collectAsStateWithLifecycle()
-
-    LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        stickyHeader { ScreenTitle(stringResource(R.string.tab_online), stringResource(R.string.online_sub)) }
-
-        item { SectionLink(stringResource(R.string.radios), stringResource(R.string.all_stations), onRadio) }
-        if (settings.stations.isEmpty()) {
-            item { LibraryEntry(Icons.Rounded.Radio, stringResource(R.string.radios), stringResource(R.string.radio_desc), onRadio) }
-        } else {
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(settings.stations.size) { i ->
-                        val station = settings.stations[i]
-                        Column(
-                            modifier = Modifier
-                                .size(width = 156.dp, height = 88.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(lerp(colorFor(station.name), Color.Black, 0.5f))
-                                .clickable { vm.playStation(station) }
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(stringResource(R.string.live_tag), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = Color.White.copy(alpha = 0.8f))
-                            Column {
-                                Text(station.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                if (station.country.isNotBlank()) {
-                                    Text(station.country, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        item { SectionLink(stringResource(R.string.podcasts), stringResource(R.string.find_show), onPodcasts) }
-        if (settings.podcasts.isEmpty()) {
-            item { LibraryEntry(Icons.Rounded.Podcasts, stringResource(R.string.podcasts), stringResource(R.string.podcast_desc), onPodcasts) }
-        } else {
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(settings.podcasts.size) { i ->
-                        val podcast = settings.podcasts[i]
-                        Column(
-                            Modifier.width(108.dp).clip(RoundedCornerShape(16.dp)).clickable {
-                                vm.rememberPodcast(podcast)
-                                onPodcast(podcast.id)
-                            },
-                        ) {
-                            WebArt(podcast.art, podcast.title, Modifier.size(108.dp), RoundedCornerShape(16.dp))
-                            Spacer(Modifier.height(6.dp))
-                            Text(podcast.title, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-            }
-        }
-        if (settings.downloads.isNotEmpty()) {
-            item { Spacer(Modifier.height(8.dp)) }
-            item {
-                LibraryEntry(Icons.Rounded.Download, stringResource(R.string.downloads), stringResource(R.string.downloads_offline, settings.downloads.size), onPodcasts)
-            }
-        }
-
-        item { SectionHeader(stringResource(R.string.discover)) }
-        item { LibraryEntry(Icons.Rounded.Explore, stringResource(R.string.discover), stringResource(R.string.discover_desc), onDiscover) }
-    }
-}
-
 // ---------------------------------------------------------------- Search
 
-/** One field that looks through the phone's music, radio stations, podcasts and the catalogue. */
+/** One field that looks through the songs, albums and artists on the phone. */
 @Composable
 fun SearchScreen(
     vm: PlayerViewModel,
     onAlbum: (Long) -> Unit,
     onArtist: (String) -> Unit,
-    onPodcast: (Long) -> Unit,
     onMore: (Song) -> Unit,
 ) {
     val songs by vm.songs.collectAsStateWithLifecycle()
@@ -433,36 +310,6 @@ fun SearchScreen(
     val foundArtists = remember(q, artists) {
         if (q.isEmpty()) emptyList() else artists.filter { it.name.contains(q, true) }.take(5)
     }
-    var stations by remember { mutableStateOf<List<Station>>(emptyList()) }
-    var shows by remember { mutableStateOf<List<Podcast>>(emptyList()) }
-    var tracks by remember { mutableStateOf<List<CatalogTrack>>(emptyList()) }
-    var searching by remember { mutableStateOf(false) }
-
-    // The three online sources are asked together, once typing pauses.
-    LaunchedEffect(q) {
-        stations = emptyList()
-        shows = emptyList()
-        tracks = emptyList()
-        if (q.length < 2) {
-            searching = false
-            return@LaunchedEffect
-        }
-        searching = true
-        delay(600)
-        coroutineScope {
-            launch {
-                stations = try { RadioApi.search(q).take(5) } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
-            }
-            launch {
-                shows = try { PodcastApi.search(q).take(5) } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
-            }
-            launch {
-                tracks = try { DeezerSearch.search(q).take(8) } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
-            }
-        }
-        searching = false
-    }
-
     val local = foundSongs.isNotEmpty() || foundAlbums.isNotEmpty() || foundArtists.isNotEmpty()
 
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
@@ -532,75 +379,7 @@ fun SearchScreen(
                 }
             }
         }
-        if (stations.isNotEmpty()) {
-            item { GroupLabel(stringResource(R.string.radios)) }
-            items(stations.size) { i ->
-                val station = stations[i]
-                StationRow(
-                    station = station,
-                    active = state.current?.id == station.id,
-                    favorite = settings.stations.any { it.id == station.id },
-                    onFavorite = { vm.toggleStation(station) },
-                ) { vm.playStation(station) }
-            }
-        }
-        if (shows.isNotEmpty()) {
-            item { GroupLabel(stringResource(R.string.podcasts)) }
-            items(shows.size) { i ->
-                val podcast = shows[i]
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            vm.rememberPodcast(podcast)
-                            onPodcast(podcast.id)
-                        }
-                        .padding(horizontal = 20.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    WebArt(podcast.art, podcast.title, Modifier.size(52.dp), RoundedCornerShape(12.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(podcast.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                        Text(podcast.author, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-        if (tracks.isNotEmpty()) {
-            item { GroupLabel(stringResource(R.string.catalogue)) }
-            items(tracks.size) { i ->
-                val track = tracks[i]
-                val active = state.current?.id == track.toSong().id
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable { vm.playPreview(track) }.padding(horizontal = 20.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    WebArt(track.cover, track.title, Modifier.size(52.dp), RoundedCornerShape(10.dp))
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold)
-                        Text(
-                            text = listOf(track.artist, track.album).filter { it.isNotBlank() }.joinToString(" · "),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Box(Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(horizontal = 9.dp, vertical = 4.dp)) {
-                        Text(stringResource(R.string.preview_tag), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-        if (searching) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(28.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            }
-        } else if (q.isNotEmpty() && !local && stations.isEmpty() && shows.isEmpty() && tracks.isEmpty()) {
+        if (q.isNotEmpty() && !local) {
             item { EmptyState(stringResource(R.string.no_results, q)) }
         }
     }

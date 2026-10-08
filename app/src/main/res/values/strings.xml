@@ -153,9 +153,9 @@
     <string name="catalogue">Catalogue</string>
     <string name="preview_tag">EXTRAIT</string>
     <string name="live_tag">EN DIRECT</string>
-    <string name="search_all_hint">Musique, radios, podcasts</string>
+    <string name="search_all_hint">Titres, albums, artistes</string>
     <string name="search_all_title">Chercher partout</string>
-    <string name="search_all_text">Votre musique, les radios, les podcasts et le catalogue, dans un seul champ.</string>
+    <string name="search_all_text">Vos titres, albums et artistes, dans un seul champ.</string>
     <string name="library_summary">%1$d titres · %2$d albums · %3$d artistes</string>
     <string name="album_by">Album · %1$s</string>
     <string name="download_running">Téléchargement des épisodes</string>

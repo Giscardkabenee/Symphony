@@ -853,8 +853,6 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
         item {
             SettingsCard {
                 SettingSwitch(Icons.Rounded.FilterAlt, stringResource(R.string.filter_short), stringResource(R.string.filter_short_desc), settings.filterShort) { vm.setFlag(Flags.FILTER_SHORT, it) }
-                HorizontalDivider(Modifier.padding(start = 56.dp))
-                SettingSwitch(Icons.Rounded.Wifi, stringResource(R.string.wifi_only), stringResource(R.string.wifi_only_desc), settings.wifiOnly) { vm.setFlag(Flags.WIFI_ONLY, it) }
             }
         }
         item { SettingsLabel(stringResource(R.string.app_section)) }

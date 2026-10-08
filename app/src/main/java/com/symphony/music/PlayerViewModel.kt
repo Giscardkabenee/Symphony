@@ -20,13 +20,7 @@ import com.symphony.music.data.LyricsData
 import com.symphony.music.data.MusicRepository
 import com.symphony.music.data.Prefs
 import com.symphony.music.data.ArtOverrides
-import com.symphony.music.data.CatalogTrack
-import com.symphony.music.data.Downloads
-import com.symphony.music.data.DownloadedEpisode
-import com.symphony.music.data.Episode
-import com.symphony.music.data.Podcast
 import com.symphony.music.data.Song
-import com.symphony.music.data.Station
 import com.symphony.music.data.UpdateUi
 import com.symphony.music.data.Updater
 import com.symphony.music.data.buildAlbums
@@ -89,9 +83,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private var byId: Map<Long, Song> = emptyMap()
     /** Radio stations started in this session, keyed by their negative id. */
     private val live = HashMap<Long, Song>()
-    private val liveStations = HashMap<Long, Station>()
-    private val episodeIds = HashSet<Long>()
-    private val podcastCache = HashMap<Long, Podcast>()
     private var ticks = 0
     private var controller: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -117,12 +108,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 if (c != null && c.isPlaying) {
                     val position = c.currentPosition.coerceAtLeast(0)
                     _state.update { it.copy(position = position) }
-                    // Every five seconds, remember where a podcast episode has got to.
-                    ticks++
-                    val playing = _state.value.current?.id
-                    if (ticks % 10 == 0 && playing != null && playing in episodeIds) {
-                        prefs.saveEpisodePosition(playing, position)
-                    }
                 }
                 delay(500)
             }
@@ -193,8 +178,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
         lyricsJob = viewModelScope.launch {
             prefs.addRecent(song.id)
-            // A song from the phone is now the latest thing listened to.
-            prefs.setLastEpisode(null)
             _lyricsStatus.value = 1
             val local = loadLyrics(getApplication(), song)
             if (local != null) {
@@ -330,122 +313,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun toggleFavorite(id: Long) {
         viewModelScope.launch {
-            if (id < 0) liveStations[id]?.let { prefs.toggleStation(it) } else prefs.toggleFavorite(id)
+            if (id >= 0) prefs.toggleFavorite(id)
         }
     }
 
-    val downloadProgress: StateFlow<Map<Long, Int>> = Downloads.progress
-
-    fun downloadEpisode(podcast: Podcast, episode: Episode) {
-        val app = getApplication<Application>()
-        // With "Wi-Fi only" on, nothing is fetched over mobile data.
-        if (settings.value.wifiOnly && !onWifi(app)) {
-            android.widget.Toast.makeText(app, R.string.wifi_required, android.widget.Toast.LENGTH_LONG).show()
-            return
-        }
-        Downloads.start(app, prefs, podcast, episode)
-    }
-
-    private fun onWifi(app: Application): Boolean {
-        val manager = app.getSystemService(android.net.ConnectivityManager::class.java) ?: return false
-        val caps = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
-        return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
-            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
-    }
-
-    fun deleteDownload(id: Long) = Downloads.delete(getApplication(), prefs, id)
-
-    fun rememberPodcast(podcast: Podcast) { podcastCache[podcast.id] = podcast }
-
-    fun podcast(id: Long): Podcast? = podcastCache[id] ?: settings.value.podcasts.firstOrNull { it.id == id }
-
-    fun togglePodcast(podcast: Podcast) { viewModelScope.launch { prefs.togglePodcast(podcast) } }
-
-    /** Plays an episode from where it was left. */
-    fun playEpisode(podcast: Podcast, episode: Episode) {
-        val c = controller ?: return
-        val song = episode.toSong(podcast)
-        live[song.id] = song
-        episodeIds += song.id
-        viewModelScope.launch { prefs.setLastEpisode(DownloadedEpisode(podcast, episode)) }
-        if (episode.art.isNotBlank()) ArtOverrides.urls[song.id] = episode.art
-        // A downloaded episode plays from the phone, without using the connection.
-        val local = Downloads.file(getApplication(), episode.id)
-        val uri = if (local.exists()) Uri.fromFile(local) else Uri.parse(episode.url)
-        val item = MediaItem.Builder()
-            .setMediaId(song.id.toString())
-            .setUri(uri)
-            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(episode.title)
-                    .setArtist(podcast.title)
-                    .setArtworkUri(if (episode.art.isNotBlank()) Uri.parse(episode.art) else null)
-                    .build()
-            )
-            .build()
-        var start = settings.value.episodePositions[episode.id] ?: 0L
-        if (episode.durationMs > 0 && start > episode.durationMs - 15_000) start = 0L
-        c.shuffleModeEnabled = false
-        c.setMediaItem(item, start)
-        c.prepare()
-        c.play()
-    }
-
-    /** Plays the official 30-second preview of a catalogue song. */
-    fun playPreview(track: CatalogTrack) {
-        val c = controller ?: return
-        if (track.preview.isBlank()) return
-        val song = track.toSong()
-        live[song.id] = song
-        if (track.cover.isNotBlank()) ArtOverrides.urls[song.id] = track.cover
-        val uri = Uri.parse(track.preview)
-        val item = MediaItem.Builder()
-            .setMediaId(song.id.toString())
-            .setUri(uri)
-            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(track.title)
-                    .setArtist(track.artist)
-                    .setAlbumTitle(track.album)
-                    .setArtworkUri(if (track.cover.isNotBlank()) Uri.parse(track.cover) else null)
-                    .build()
-            )
-            .build()
-        c.shuffleModeEnabled = false
-        c.setMediaItem(item)
-        c.prepare()
-        c.play()
-    }
-
-    fun toggleStation(station: Station) { viewModelScope.launch { prefs.toggleStation(station) } }
-
-    /** Starts a live radio stream in the same player as the music. */
-    fun playStation(station: Station) {
-        val c = controller ?: return
-        val song = station.toSong()
-        live[song.id] = song
-        liveStations[song.id] = station
-        if (station.icon.isNotBlank()) ArtOverrides.urls[song.id] = station.icon
-        val uri = Uri.parse(station.url)
-        val item = MediaItem.Builder()
-            .setMediaId(song.id.toString())
-            .setUri(uri)
-            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(station.name)
-                    .setArtist(song.artist)
-                    .setArtworkUri(if (station.icon.isNotBlank()) Uri.parse(station.icon) else null)
-                    .build()
-            )
-            .build()
-        c.shuffleModeEnabled = false
-        c.setMediaItem(item)
-        c.prepare()
-        c.play()
-    }
     /** Moves a song in the play queue, as finished by a drag. */
     fun moveInQueue(from: Int, to: Int) {
         val c = controller ?: return
