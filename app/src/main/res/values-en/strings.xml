@@ -361,4 +361,8 @@
     <string name="weekly_mix">Mix of the week</string>
     <string name="monthly_mix">Mix of the month</string>
     <string name="your_mixes">Your mixes</string>
+    <string name="dj_title">DJ Symphony</string>
+    <string name="dj_desc">Your songs mixed like a DJ would, with the DJ talking between tracks</string>
+    <string name="dj_voice">DJ voice</string>
+    <string name="dj_voice_desc">During a DJ mix, a voice announces the songs (the phone\'s text-to-speech, offline)</string>
 </resources>

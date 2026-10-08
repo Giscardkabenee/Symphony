@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.SurroundSound
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Usb
+import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.MoreVert
@@ -103,6 +104,38 @@ const val MIX_DAY = "__mix_day__"
 const val MIX_WEEK = "__mix_week__"
 const val MIX_MONTH = "__mix_month__"
 val MIX_KEYS = listOf(MIX_DAY, MIX_WEEK, MIX_MONTH)
+const val MIX_DJ = "__mix_dj__"
+
+/**
+ * Today's DJ set: about 24 songs, ordered like a DJ builds a set: it starts calm, climbs to the most
+ * energetic songs, then comes back down, keeping neighbouring tempos close.
+ */
+fun buildDjSet(all: List<Song>, favorites: List<Song>, most: List<Song>): List<Song> {
+    if (all.isEmpty()) return emptyList()
+    val cal = java.util.Calendar.getInstance()
+    val r = java.util.Random((cal.get(java.util.Calendar.YEAR) * 1000L + cal.get(java.util.Calendar.DAY_OF_YEAR)) * 13)
+    val pool = (favorites.shuffled(r).take(10) + most.take(30).shuffled(r).take(12) + all.shuffled(r).take(24))
+        .distinctBy { it.id }.take(24)
+    fun energy(s: Song) = com.symphony.music.playback.SongAnalysis.get(s.id)?.energy ?: 0.5f
+    fun bpm(s: Song) = com.symphony.music.playback.SongAnalysis.get(s.id)?.bpm ?: 110f
+    val byEnergy = pool.sortedBy { energy(it) }
+    val rising = byEnergy.filterIndexed { i, _ -> i % 2 == 0 }
+    val falling = byEnergy.filterIndexed { i, _ -> i % 2 == 1 }.reversed()
+    // Inside each half, neighbours with close tempos follow each other.
+    fun chain(list: List<Song>): List<Song> {
+        if (list.size < 3) return list
+        val left = list.toMutableList()
+        val out = mutableListOf(left.removeAt(0))
+        while (left.isNotEmpty()) {
+            val last = bpm(out.last())
+            val next = left.take(3).minByOrNull { kotlin.math.abs(bpm(it) - last) }!!
+            left.remove(next)
+            out += next
+        }
+        return out
+    }
+    return chain(rising) + chain(falling)
+}
 
 /**
  * A mix drawn from favourites, most played, never played and the rest of the library. It is the same
@@ -696,9 +729,11 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     val isFavorites = name == FAVORITES_KEY
     // Lists the app builds by itself; nothing can be removed from them by hand.
     val era = if (name.startsWith(ERA_PREFIX)) name.removePrefix(ERA_PREFIX).toIntOrNull() else null
-    val smart = name == RECENT_KEY || name == ADDED_KEY || name == MOST_KEY || era != null || name in MIX_KEYS
-    val songs = remember(name, settings, allSongs) {
-        if (name in MIX_KEYS) buildMix(name, allSongs, vm.songsFor(settings.favorites), vm.songsFor(mostPlayedIds(settings.playCounts)), settings.playCounts)
+    val smart = name == RECENT_KEY || name == ADDED_KEY || name == MOST_KEY || era != null || name in MIX_KEYS || name == MIX_DJ
+    val grooves by com.symphony.music.playback.SongAnalysis.version.collectAsStateWithLifecycle()
+    val songs = remember(name, settings, allSongs, if (name == MIX_DJ) grooves else 0) {
+        if (name == MIX_DJ) buildDjSet(allSongs, vm.songsFor(settings.favorites), vm.songsFor(mostPlayedIds(settings.playCounts)))
+        else if (name in MIX_KEYS) buildMix(name, allSongs, vm.songsFor(settings.favorites), vm.songsFor(mostPlayedIds(settings.playCounts)), settings.playCounts)
         else if (era != null) allSongs.filter { it.year in 1900..2100 && it.year / 10 * 10 == era }.sortedWith(compareBy({ it.year }, { it.title.lowercase() }))
         else when (name) {
             RECENT_KEY -> vm.songsFor(settings.recents)
@@ -709,6 +744,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
         }
     }
     val title = if (era != null) stringResource(R.string.era_label, era % 100) else when (name) {
+        MIX_DJ -> stringResource(R.string.dj_title)
         MIX_DAY -> stringResource(R.string.daily_mix)
         MIX_WEEK -> stringResource(R.string.weekly_mix)
         MIX_MONTH -> stringResource(R.string.monthly_mix)
@@ -734,8 +770,8 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     LazyColumn(state = listState, contentPadding = PaddingValues(bottom = BarSpace)) {
         item(key = "header") {
             DetailHeader(title, subtitle, songs.firstOrNull()?.albumId, title, onBack, covers = songs.map { it.albumId }.distinct().take(4),
-                onPlay = { vm.play(songs, 0) },
-                onShuffle = { vm.play(songs, 0, shuffle = true) },
+                onPlay = { if (name == MIX_DJ) vm.playDj(songs) else vm.play(songs, 0) },
+                onShuffle = { if (name == MIX_DJ) vm.playDj(songs.shuffled()) else vm.play(songs, 0, shuffle = true) },
                 action = {
                     if (!isFavorites && !smart) {
                         FilledTonalIconButton(onClick = { vm.deletePlaylist(name); onBack() }) {
@@ -854,6 +890,8 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.SurroundSound, stringResource(R.string.spatial), stringResource(R.string.spatial_desc), settings.spatial) { vm.setFlag(Flags.SPATIAL, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.AutoAwesome, stringResource(R.string.automix), stringResource(R.string.automix_desc), settings.automix) { vm.setFlag(Flags.AUTOMIX, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.RecordVoiceOver, stringResource(R.string.dj_voice), stringResource(R.string.dj_voice_desc), settings.djVoice) { vm.setFlag(Flags.DJ_VOICE, it) }
                 if (settings.automix) {
                     var seconds by remember(settings.automixSeconds) { mutableFloatStateOf(settings.automixSeconds.toFloat()) }
                     Column(Modifier.padding(start = 56.dp, end = 16.dp, bottom = 8.dp)) {

@@ -54,8 +54,12 @@ object SilenceScanner {
         return result
     }
 
-    /** Decodes [fromMs, toMs) and reports the peak of each 50 ms window; stops when [onWindow] returns false. */
-    private fun decode(context: Context, uri: Uri, fromMs: Long, toMs: Long, onWindow: (Long, Float) -> Boolean) {
+    /** Decodes [fromMs, toMs) and reports the peak of each window; stops when [onWindow] returns false. */
+    private fun decode(context: Context, uri: Uri, fromMs: Long, toMs: Long, onWindow: (Long, Float) -> Boolean) =
+        decodeLevels(context, uri, fromMs, toMs, 50) { t, peak, _ -> onWindow(t, peak) }
+
+    /** Decodes [fromMs, toMs) in windows of [windowMs]: start time, peak and RMS of each. */
+    internal fun decodeLevels(context: Context, uri: Uri, fromMs: Long, toMs: Long, windowMs: Int, onWindow: (Long, Float, Float) -> Boolean) {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         try {
@@ -104,26 +108,29 @@ object SilenceScanner {
                     val start = info.presentationTimeUs / 1000
                     var keepGoing = true
                     if (start >= fromMs && info.size > 0) {
-                        val perWindow = (rate / 20) * channels
+                        val perWindow = (rate * windowMs / 1000).coerceAtLeast(1) * channels
                         var count = 0
                         var peak = 0f
+                        var sum = 0.0
                         var frame = 0L
                         if (floatPcm) {
                             val samples = buffer.asFloatBuffer()
                             while (samples.hasRemaining() && keepGoing) {
-                                peak = maxOf(peak, kotlin.math.abs(samples.get()))
+                                val v = kotlin.math.abs(samples.get())
+                                peak = maxOf(peak, v); sum += v * v
                                 if (++count == perWindow) {
-                                    keepGoing = onWindow(start + frame * 50, peak)
-                                    frame++; count = 0; peak = 0f
+                                    keepGoing = onWindow(start + frame * windowMs, peak, kotlin.math.sqrt(sum / count).toFloat())
+                                    frame++; count = 0; peak = 0f; sum = 0.0
                                 }
                             }
                         } else {
                             val samples = buffer.asShortBuffer()
                             while (samples.hasRemaining() && keepGoing) {
-                                peak = maxOf(peak, kotlin.math.abs(samples.get().toInt()) / 32768f)
+                                val v = kotlin.math.abs(samples.get().toInt()) / 32768f
+                                peak = maxOf(peak, v); sum += v * v
                                 if (++count == perWindow) {
-                                    keepGoing = onWindow(start + frame * 50, peak)
-                                    frame++; count = 0; peak = 0f
+                                    keepGoing = onWindow(start + frame * windowMs, peak, kotlin.math.sqrt(sum / count).toFloat())
+                                    frame++; count = 0; peak = 0f; sum = 0.0
                                 }
                             }
                         }

@@ -29,6 +29,8 @@ class AutoMix(
     private val main: ExoPlayer,
     private val fader: ExoPlayer,
     private val scope: CoroutineScope,
+    /** Called on the main thread once a mix has handed over to the next song. */
+    private val onMixed: (MediaItem) -> Unit = {},
 ) {
     var enabled = false
     var fadeMs = 6000L
@@ -72,17 +74,20 @@ class AutoMix(
         return albumA != null && albumA == albumB && trackB == trackA + 1
     }
 
+    /** Length of the cross: longer, like a DJ, during a DJ mix. */
+    private val crossMs get() = if (DjSession.active) 10_000L else fadeMs
+
     private suspend fun tick() {
-        if (!enabled || fading || !main.isPlaying) return
+        if (!(enabled || DjSession.active) || fading || !main.isPlaying) return
         if (SleepTimer.endOfTrack.value || SleepTimer.endsAt.value > 0L) return
         if (main.repeatMode == Player.REPEAT_MODE_ONE) return
         val next = main.nextMediaItemIndex
         if (next == C.INDEX_UNSET) return
         val duration = main.duration
-        if (duration == C.TIME_UNSET || duration < fadeMs * 3) return
+        if (duration == C.TIME_UNSET || duration < crossMs * 3) return
         val current = main.currentMediaItem ?: return
         val incoming = main.getMediaItemAt(next)
-        if (sameAlbumRun(current, incoming)) return
+        if (!DjSession.active && sameAlbumRun(current, incoming)) return
         val position = main.currentPosition
         val key = current.mediaId + ">" + incoming.mediaId + "@" + next
         // Look for silences about 40 s ahead, off the main thread.
@@ -99,15 +104,17 @@ class AutoMix(
             }
         }
         val p = plan?.takeIf { it.key == key } ?: return
-        val end = p.outro.coerceIn(fadeMs, duration)
-        if (position >= end - fadeMs) crossfade(next, incoming, if (p.ready) p.intro else 0L, end - position)
+        val end = p.outro.coerceIn(crossMs, duration)
+        if (position >= end - crossMs) crossfade(next, incoming, if (p.ready) p.intro else 0L, end - position)
     }
 
     private suspend fun crossfade(nextIndex: Int, item: MediaItem, introMs: Long, remainingMs: Long) {
         fading = true
         val fromIndex = main.currentMediaItemIndex
+        val dj = DjSession.active
+        var handed = false
         try {
-            val fade = remainingMs.coerceIn(1500L, fadeMs)
+            val fade = remainingMs.coerceIn(1500L, crossMs)
             fader.volume = 0f
             fader.setMediaItem(item, introMs)
             fader.prepare()
@@ -118,13 +125,24 @@ class AutoMix(
             for (i in 1..steps) {
                 if (!main.playWhenReady || main.currentMediaItemIndex != fromIndex && main.currentMediaItemIndex != nextIndex) return
                 val x = i / steps.toFloat()
-                main.volume = cos(x * PI / 2).toFloat()
-                fader.volume = sin(x * PI / 2).toFloat()
+                if (dj) {
+                    // DJ transition: the outgoing song loses its treble and fades late, the incoming
+                    // one arrives without bass, then the basses swap halfway.
+                    main.volume = if (x < 0.55f) 1f else cos((x - 0.55f) / 0.45f * PI / 2).toFloat()
+                    fader.volume = sin(minOf(1f, x / 0.45f) * PI / 2).toFloat()
+                    DjFx.highCutMain = (20_000.0 * Math.pow(250.0 / 20_000.0, x.toDouble())).toFloat()
+                    DjFx.lowCutFader = if (x < 0.5f) 400f else (400.0 * Math.pow(20.0 / 400.0, ((x - 0.5f) / 0.5f).toDouble())).toFloat()
+                } else {
+                    main.volume = cos(x * PI / 2).toFloat()
+                    fader.volume = sin(x * PI / 2).toFloat()
+                }
                 delay(40)
             }
             // Hand over: the main player jumps to the incoming song where the second player is.
             main.volume = 0f
+            DjFx.highCutMain = 0f
             main.seekTo(nextIndex, fader.currentPosition + 250)
+            handed = true
             withTimeoutOrNull(3000) { while (!(main.isPlaying && main.playbackState == Player.STATE_READY)) delay(15) }
             for (i in 1..6) {
                 main.volume = i / 6f
@@ -135,8 +153,10 @@ class AutoMix(
             main.volume = 1f
             fader.stop()
             fader.clearMediaItems()
+            DjFx.reset()
             fading = false
             plan = null
+            if (handed) onMixed(item)
         }
     }
 }

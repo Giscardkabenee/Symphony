@@ -284,6 +284,8 @@ fun HomeScreen(
     val topArtist = if (settings.playCounts.isEmpty()) null else topArtists.firstOrNull()?.name
     val day = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) }
     // 25 songs drawn from favourites, most played and the rest, in an order that changes every day.
+    val grooves by com.symphony.music.playback.SongAnalysis.version.collectAsStateWithLifecycle()
+    val djSet = remember(songs, settings.favorites, settings.playCounts, day, grooves) { buildDjSet(songs, favorites, most) }
     val mixes = remember(songs, settings.favorites, settings.playCounts, day) {
         MIX_KEYS.map { key -> key to buildMix(key, songs, favorites, most, settings.playCounts) }
     }
@@ -396,6 +398,34 @@ fun HomeScreen(
             item { SectionHeader(stringResource(R.string.your_mixes)) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // The DJ set first: mixed like a DJ, with the DJ's voice.
+                    if (djSet.isNotEmpty()) item {
+                        Row(
+                            modifier = Modifier
+                                .width(300.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Brush.linearGradient(listOf(Color(0xFF050505), Color(0xFF1F1147), Color(0xFF7C3AED))))
+                                .clickable { onStack(MIX_DJ) }
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.size(84.dp).clip(RoundedCornerShape(16.dp)).background(Color.Black), contentAlignment = Alignment.Center) {
+                                PlayingBars(true, Color(0xFFF97316), Modifier.size(width = 46.dp, height = 40.dp))
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.dj_title), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
+                                Text(stringResource(R.string.dj_desc), color = Color.White.copy(alpha = 0.75f), maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 13.sp)
+                                Text(stringResource(R.string.songs_count, djSet.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                            }
+                            Box(
+                                Modifier.size(44.dp).clip(CircleShape).background(Color.White).clickable { vm.playDj(djSet) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.play), tint = Color.Black)
+                            }
+                        }
+                    }
                     items(mixes.size) { i ->
                         val (key, mix) = mixes[i]
                         val colors = when (key) {

@@ -56,6 +56,7 @@ class PlaybackService : MediaSessionService() {
     private var appliedEffects: List<Int>? = null
     private var fader: ExoPlayer? = null
     private var automix: AutoMix? = null
+    private var djVoice: DjVoice? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
@@ -67,7 +68,7 @@ class PlaybackService : MediaSessionService() {
         // The sample format is fixed when the player is built, so it is read once at start.
         val initial = runBlocking { Prefs(this@PlaybackService).flow.first() }
         PlaybackInfo.floatOutput.value = initial.floatOutput
-        val renderers = SymphonyRenderers(this).setEnableAudioFloatOutput(initial.floatOutput)
+        val renderers = SymphonyRenderers(this, 0).setEnableAudioFloatOutput(initial.floatOutput)
         val player = ExoPlayer.Builder(this, renderers)
             .setAudioAttributes(attributes, true)
             .setHandleAudioBecomingNoisy(true)
@@ -79,6 +80,18 @@ class PlaybackService : MediaSessionService() {
             override fun onEvents(player: androidx.media3.common.Player, events: androidx.media3.common.Player.Events) {
                 // Keep the home-screen widget in step with the player.
                 PlayerWidget.refresh(this@PlaybackService)
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                // The opening words of a DJ set, once the first song has started.
+                if (isPlaying && DjSession.active && DjSession.intro) djVoice?.announce(player.currentMediaItem)
+            }
+
+            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+                // A skip during a DJ set gets its own announcement (mixes announce from AutoMix).
+                if (DjSession.active && !DjSession.intro && reason == androidx.media3.common.Player.MEDIA_ITEM_TRANSITION_REASON_SEEK && player.volume > 0.5f) {
+                    djVoice?.announce(mediaItem)
+                }
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -108,12 +121,13 @@ class PlaybackService : MediaSessionService() {
         }
         PlaybackInfo.audioSessionId.value = audioSessionId
         // Second player for AutoMix: same sound path and effects, never takes audio focus.
-        val second = ExoPlayer.Builder(this, SymphonyRenderers(this).setEnableAudioFloatOutput(initial.floatOutput))
+        val second = ExoPlayer.Builder(this, SymphonyRenderers(this, 1).setEnableAudioFloatOutput(initial.floatOutput))
             .setAudioAttributes(attributes, false)
             .build()
         second.audioSessionId = audioSessionId
         fader = second
-        automix = AutoMix(this, player, second, scope).also { it.start() }
+        djVoice = DjVoice(this, player)
+        automix = AutoMix(this, player, second, scope) { item -> djVoice?.announce(item) }.also { it.start() }
         equalizer = try { Equalizer(0, audioSessionId) } catch (e: Exception) { null }
         bassBoost = try { BassBoost(0, audioSessionId) } catch (e: Exception) { null }
         val openApp = PendingIntent.getActivity(
@@ -141,6 +155,8 @@ class PlaybackService : MediaSessionService() {
                 applyEffects(it)
                 automix?.enabled = it.automix
                 HeadphoneEq.set(it.headphone, it.headphoneOn)
+                DjSession.voiceOn = it.djVoice
+                DjSession.userName = it.userName
                 automix?.fadeMs = it.automixSeconds * 1000L
             }
         }
@@ -223,6 +239,8 @@ class PlaybackService : MediaSessionService() {
         exo = null
         automix?.stop()
         automix = null
+        djVoice?.release()
+        djVoice = null
         fader?.release()
         fader = null
         SleepTimer.cancel()
@@ -274,7 +292,7 @@ class PlaybackService : MediaSessionService() {
 }
 
 /** Standard renderers, with the headphone correction added to the audio path. */
-private class SymphonyRenderers(context: android.content.Context) : DefaultRenderersFactory(context) {
+private class SymphonyRenderers(context: android.content.Context, private val role: Int) : DefaultRenderersFactory(context) {
     override fun buildAudioSink(
         context: android.content.Context,
         enableFloatOutput: Boolean,
@@ -283,6 +301,6 @@ private class SymphonyRenderers(context: android.content.Context) : DefaultRende
         androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(arrayOf<androidx.media3.common.audio.AudioProcessor>(ParametricEqProcessor()))
+            .setAudioProcessors(arrayOf<androidx.media3.common.audio.AudioProcessor>(ParametricEqProcessor(role)))
             .build()
 }

@@ -147,6 +147,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             _songs.value = list
             _loaded.value = true
             sync()
+            // Tempo and energy for the DJ mix, quietly in the background.
+            com.symphony.music.playback.SongAnalysis.analyse(getApplication(), list)
             // Tell when songs arrived while the app was open.
             val fresh = list.count { it.id !in before }
             if (wasLoaded && before.isNotEmpty() && fresh > 0) {
@@ -280,7 +282,16 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         )
         .build()
 
+    /** Starts a DJ set: songs mixed like a DJ, with the DJ's voice between them. */
+    fun playDj(list: List<Song>) {
+        if (list.isEmpty()) return
+        play(list, 0)
+        com.symphony.music.playback.DjSession.intro = true
+        com.symphony.music.playback.DjSession.active = true
+    }
+
     fun play(list: List<Song>, index: Int = 0, shuffle: Boolean = false) {
+        com.symphony.music.playback.DjSession.active = false
         val c = controller ?: return
         if (list.isEmpty()) return
         c.shuffleModeEnabled = shuffle

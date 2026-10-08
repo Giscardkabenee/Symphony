@@ -33,7 +33,7 @@ object HeadphoneEq {
  * Parametric equalizer inside the player: peak and shelf filters (RBJ biquads) computed for the
  * actual sample rate, applied to 16-bit or float PCM, with the profile's preamp so nothing clips.
  */
-class ParametricEqProcessor : BaseAudioProcessor() {
+class ParametricEqProcessor(private val role: Int = 0) : BaseAudioProcessor() {
     private var channels = 2
     private var rate = 48000
     private var float = false
@@ -43,6 +43,51 @@ class ParametricEqProcessor : BaseAudioProcessor() {
     private var coef = DoubleArray(0)
     private var state = DoubleArray(0)
     private var active = false
+    // DJ filters: high-pass then low-pass (b0 b1 b2 a1 a2 each), and their state per channel.
+    private var djLow = 0f
+    private var djHigh = 0f
+    private val djCoef = DoubleArray(10)
+    private var djState = DoubleArray(0)
+
+    /** Picks up the DJ cut-offs; true when at least one filter is on. */
+    private fun djUpdate(): Boolean {
+        val low = DjFx.lowCut(role)
+        val high = DjFx.highCut(role)
+        if (djState.size != channels * 8) djState = DoubleArray(channels * 8)
+        if (low != djLow || high != djHigh) {
+            if ((djLow == 0f && low > 0f) || (djHigh == 0f && high > 0f)) java.util.Arrays.fill(djState, 0.0)
+            djLow = low
+            djHigh = high
+            fun set(offset: Int, f: Float, highPass: Boolean) {
+                val fc = f.toDouble().coerceIn(10.0, rate / 2.2)
+                val w0 = 2 * PI * fc / rate
+                val alpha = sin(w0) / (2 * 0.707)
+                val cw = cos(w0)
+                val a0 = 1 + alpha
+                val b0 = if (highPass) (1 + cw) / 2 else (1 - cw) / 2
+                val b1 = if (highPass) -(1 + cw) else 1 - cw
+                djCoef[offset] = b0 / a0; djCoef[offset + 1] = b1 / a0; djCoef[offset + 2] = b0 / a0
+                djCoef[offset + 3] = -2 * cw / a0; djCoef[offset + 4] = (1 - alpha) / a0
+            }
+            if (low > 0f) set(0, low, true)
+            if (high > 0f) set(5, high, false)
+        }
+        return djLow > 0f || djHigh > 0f
+    }
+
+    private fun djFilter(sample: Float, channel: Int): Float {
+        var x = sample.toDouble()
+        for (k in 0..1) {
+            if ((k == 0 && djLow <= 0f) || (k == 1 && djHigh <= 0f)) continue
+            val c = k * 5
+            val s = channel * 8 + k * 4
+            val y = djCoef[c] * x + djCoef[c + 1] * djState[s] + djCoef[c + 2] * djState[s + 1] - djCoef[c + 3] * djState[s + 2] - djCoef[c + 4] * djState[s + 3]
+            djState[s + 1] = djState[s]; djState[s] = x
+            djState[s + 3] = djState[s + 2]; djState[s + 2] = y
+            x = y
+        }
+        return x.toFloat().coerceIn(-1f, 1f)
+    }
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
@@ -109,21 +154,27 @@ class ParametricEqProcessor : BaseAudioProcessor() {
         val size = inputBuffer.remaining()
         if (size == 0) return
         if (seen != HeadphoneEq.version.get()) rebuild()
+        val dj = djUpdate()
         val out = replaceOutputBuffer(size)
-        if (!active) {
+        if (!active && !dj) {
             out.put(inputBuffer)
         } else if (float) {
             val input = inputBuffer.order(ByteOrder.nativeOrder())
             var ch = 0
             while (input.remaining() >= 4) {
-                out.putFloat(filter(input.getFloat(), ch))
+                var v = input.getFloat()
+                if (active) v = filter(v, ch)
+                if (dj) v = djFilter(v, ch)
+                out.putFloat(v)
                 ch = (ch + 1) % channels
             }
         } else {
             val input = inputBuffer.order(ByteOrder.nativeOrder())
             var ch = 0
             while (input.remaining() >= 2) {
-                val v = filter(input.getShort() / 32768f, ch)
+                var v = input.getShort() / 32768f
+                if (active) v = filter(v, ch)
+                if (dj) v = djFilter(v, ch)
                 out.putShort((v * 32767f).toInt().toShort())
                 ch = (ch + 1) % channels
             }
@@ -133,6 +184,7 @@ class ParametricEqProcessor : BaseAudioProcessor() {
 
     override fun onFlush() {
         java.util.Arrays.fill(state, 0.0)
+        java.util.Arrays.fill(djState, 0.0)
     }
 
     override fun onReset() {
