@@ -908,8 +908,6 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.BlurOn, stringResource(R.string.blur_lyrics), stringResource(R.string.blur_lyrics_desc), settings.blurLyrics) { vm.setFlag(Flags.BLUR_LYRICS, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
-                SettingSwitch(Icons.Rounded.Menu, stringResource(R.string.classic_bar), stringResource(R.string.classic_bar_desc), settings.classicBar) { vm.setFlag(Flags.CLASSIC_BAR, it) }
-                HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.Label, stringResource(R.string.hide_labels), stringResource(R.string.hide_labels_desc), settings.hideLabels) { vm.setFlag(Flags.HIDE_LABELS, it) }
             }
         }
