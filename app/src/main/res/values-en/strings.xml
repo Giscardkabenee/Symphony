@@ -216,4 +216,14 @@
     <string name="view_list">Show as list</string>
     <string name="user_name">Your first name</string>
     <string name="user_name_desc">Used to greet you on Home. Leave empty to hide it.</string>
+    <string name="swipe_next">Play next</string>
+    <string name="swipe_queue">Add to queue</string>
+    <string name="queued_next">Next: %1$s</string>
+    <string name="queued_end">Added to queue: %1$s</string>
+    <string name="sort_short_az">A to Z</string>
+    <string name="sort_short_za">Z to A</string>
+    <string name="sort_short_artist">Artist</string>
+    <string name="sort_short_added">Recently added</string>
+    <string name="sort_short_modified">Recently modified</string>
+    <string name="sort_short_duration">Duration</string>
 </resources>

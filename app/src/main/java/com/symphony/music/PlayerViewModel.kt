@@ -235,6 +235,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Adds a song at the end of the play queue. */
+    fun addToQueue(song: Song) {
+        val c = controller ?: return
+        if (c.mediaItemCount == 0) play(listOf(song)) else c.addMediaItem(song.toItem())
+    }
+
     fun toggle() {
         val c = controller ?: return
         if (c.isPlaying) {

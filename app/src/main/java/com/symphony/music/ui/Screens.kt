@@ -570,6 +570,7 @@ fun AlbumScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit, onMore: (Song
         items(album.songs.size) { i ->
             val song = album.songs[i]
             val active = state.current?.id == song.id
+            QueueSwipe({ vm.playNext(song) }, { vm.addToQueue(song) }) {
             Row(
                 modifier = Modifier.fillMaxWidth().clickable { vm.play(album.songs, i) }.padding(start = 20.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -592,6 +593,7 @@ fun AlbumScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit, onMore: (Song
                 IconButton(onClick = { onMore(song) }) {
                     Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
             }
         }
     }
@@ -632,7 +634,9 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
         item { SectionHeader(stringResource(R.string.songs)) }
         items(artist.songs.size) { i ->
             val song = artist.songs[i]
-            SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(artist.songs, i) }
+            QueueSwipe({ vm.playNext(song) }, { vm.addToQueue(song) }) {
+                SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(artist.songs, i) }
+            }
         }
     }
 }

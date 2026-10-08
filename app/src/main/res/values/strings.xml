@@ -217,4 +217,14 @@
     <string name="view_list">Afficher en liste</string>
     <string name="user_name">Votre prénom</string>
     <string name="user_name_desc">Utilisé pour vous saluer sur l\'Accueil. Laissez vide pour ne pas l\'afficher.</string>
+    <string name="swipe_next">Lire ensuite</string>
+    <string name="swipe_queue">Ajouter à la file</string>
+    <string name="queued_next">Ensuite : %1$s</string>
+    <string name="queued_end">Ajouté à la file : %1$s</string>
+    <string name="sort_short_az">A à Z</string>
+    <string name="sort_short_za">Z à A</string>
+    <string name="sort_short_artist">Artiste</string>
+    <string name="sort_short_added">Ajout récent</string>
+    <string name="sort_short_modified">Modifié récemment</string>
+    <string name="sort_short_duration">Durée</string>
 </resources>

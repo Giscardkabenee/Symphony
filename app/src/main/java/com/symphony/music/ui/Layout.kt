@@ -27,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.rounded.ExpandMore
 import com.symphony.music.data.ArtistInfo
 import com.symphony.music.data.AlbumInfo
 import androidx.compose.material.icons.rounded.MoreVert
@@ -335,6 +336,64 @@ private fun EntryRow(title: String, detail: String, onClick: () -> Unit, art: @C
     }
 }
 
+private val sortShort = listOf(R.string.sort_short_az, R.string.sort_short_za, R.string.sort_short_artist, R.string.sort_short_added, R.string.sort_short_modified, R.string.sort_short_duration)
+
+/** Sort pill with its menu on the left, list / grid switch on the right. */
+@Composable
+private fun ListControls(grid: Boolean, onGrid: (Boolean) -> Unit, sort: Int, onSort: (Int) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    var open by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            Row(
+                modifier = Modifier
+                    .height(40.dp)
+                    .clip(CircleShape)
+                    .background(scheme.surfaceContainerHigh)
+                    .clickable(onClickLabel = stringResource(R.string.sort)) { open = true }
+                    .padding(start = 14.dp, end = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(sortShort[sort]), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.size(20.dp), tint = scheme.onSurfaceVariant)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = RoundedCornerShape(18.dp)) {
+                sortLabels.forEachIndexed { i, label ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(label), fontWeight = if (i == sort) FontWeight.Bold else FontWeight.Normal) },
+                        trailingIcon = { if (i == sort) Icon(Icons.Rounded.Check, contentDescription = null) },
+                        onClick = {
+                            onSort(i)
+                            open = false
+                        },
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Row(
+            Modifier.height(40.dp).clip(CircleShape).background(scheme.surfaceContainerHigh).padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            listOf(false to Icons.AutoMirrored.Rounded.ViewList, true to Icons.Rounded.GridView).forEach { (value, icon) ->
+                val selected = grid == value
+                Box(
+                    modifier = Modifier
+                        .size(width = 46.dp, height = 32.dp)
+                        .clip(CircleShape)
+                        .background(if (selected) scheme.onSurface else Color.Transparent)
+                        .clickable(onClickLabel = stringResource(if (value) R.string.view_grid else R.string.view_list)) { onGrid(value) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = if (selected) scheme.surface else scheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
 /** Everything stored on the phone: songs, albums, artists and playlists behind four pills, sortable, as a grid or a list. */
 @Composable
 fun MusicScreen(
@@ -357,46 +416,41 @@ fun MusicScreen(
     var grids by remember {
         mutableStateOf(List(3) { i -> store.getBoolean("music_grid_$i", i != 0) })
     }
-    var sortOpen by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     val labels = listOf(R.string.songs, R.string.tab_albums, R.string.tab_artists, R.string.playlists)
     val sortedSongs = remember(songs, sort) { sortSongs(songs, sort) }
     val sortedAlbums = remember(albums, sort) { sortAlbums(albums, sort) }
     val sortedArtists = remember(artists, sort) { sortArtists(artists, sort) }
     val grid = tab < 3 && grids[tab]
+    // Order and layout, just under the play buttons (or at the top of albums and artists).
+    val controls: @Composable () -> Unit = {
+        ListControls(
+            grid = grid,
+            onGrid = { value ->
+                grids = grids.toMutableList().also { it[tab] = value }
+                store.edit().putBoolean("music_grid_$tab", value).apply()
+            },
+            sort = sort,
+            onSort = { value ->
+                sort = value
+                store.edit().putInt("music_sort", value).apply()
+            },
+        )
+    }
+    val context2 = LocalContext.current
+    val nextLabel = stringResource(R.string.queued_next)
+    val queueLabel = stringResource(R.string.queued_end)
+    val playNext: (Song) -> Unit = { song ->
+        vm.playNext(song)
+        android.widget.Toast.makeText(context2, String.format(nextLabel, song.title), android.widget.Toast.LENGTH_SHORT).show()
+    }
+    val addToQueue: (Song) -> Unit = { song ->
+        vm.addToQueue(song)
+        android.widget.Toast.makeText(context2, String.format(queueLabel, song.title), android.widget.Toast.LENGTH_SHORT).show()
+    }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle(stringResource(R.string.tab_music), stringResource(R.string.library_summary, songs.size, albums.size, artists.size)) {
-            if (tab < 3) {
-                IconButton(onClick = {
-                    grids = grids.toMutableList().also { it[tab] = !it[tab] }
-                    store.edit().putBoolean("music_grid_$tab", grids[tab]).apply()
-                }) {
-                    Icon(
-                        imageVector = if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
-                        contentDescription = stringResource(if (grid) R.string.view_list else R.string.view_grid),
-                    )
-                }
-                Box {
-                    IconButton(onClick = { sortOpen = true }) {
-                        Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = stringResource(R.string.sort))
-                    }
-                    DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }, shape = RoundedCornerShape(18.dp)) {
-                        sortLabels.forEachIndexed { i, label ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(label), fontWeight = if (i == sort) FontWeight.Bold else FontWeight.Normal) },
-                                trailingIcon = { if (i == sort) Icon(Icons.Rounded.Check, contentDescription = null) },
-                                onClick = {
-                                    sort = i
-                                    store.edit().putInt("music_sort", i).apply()
-                                    sortOpen = false
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        ScreenTitle(stringResource(R.string.tab_music), stringResource(R.string.library_summary, songs.size, albums.size, artists.size))
         // Four equal pills, so none is cut off at the edge.
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             labels.forEachIndexed { i, label ->
@@ -417,7 +471,10 @@ fun MusicScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) })
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) })
+                        controls()
+                    }
                 }
                 items(sortedSongs.size) { i ->
                     val song = sortedSongs[i]
@@ -438,11 +495,16 @@ fun MusicScreen(
             }
             tab == 0 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
                 item {
-                    PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) }, Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) })
+                        controls()
+                    }
                 }
-                items(sortedSongs.size) { i ->
+                items(sortedSongs.size, key = { sortedSongs[it].id }) { i ->
                     val song = sortedSongs[i]
-                    SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(sortedSongs, i) }
+                    QueueSwipe({ playNext(song) }, { addToQueue(song) }) {
+                        SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(sortedSongs, i) }
+                    }
                 }
             }
             // ---- Albums
@@ -452,12 +514,14 @@ fun MusicScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) { controls() }
                 items(sortedAlbums.size) { i ->
                     val album = sortedAlbums[i]
                     AlbumCard(album) { onAlbum(album.id) }
                 }
             }
             tab == 1 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
+                item { Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { controls() } }
                 items(sortedAlbums.size) { i ->
                     val album = sortedAlbums[i]
                     EntryRow(album.title, album.artist + " · " + stringResource(R.string.songs_count, album.songs.size), { onAlbum(album.id) }) {
@@ -472,6 +536,7 @@ fun MusicScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) { controls() }
                 items(sortedArtists.size) { i ->
                     val artist = sortedArtists[i]
                     Column(
@@ -486,6 +551,7 @@ fun MusicScreen(
                 }
             }
             tab == 2 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
+                item { Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { controls() } }
                 items(sortedArtists.size) { i ->
                     val artist = sortedArtists[i]
                     EntryRow(artist.name, stringResource(R.string.songs_count, artist.songs.size), { onArtist(artist.name) }) {
@@ -589,7 +655,9 @@ fun SearchScreen(
             item { GroupLabel(stringResource(R.string.my_music)) }
             items(foundSongs.size) { i ->
                 val song = foundSongs[i]
-                SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(foundSongs, i) }
+                QueueSwipe({ vm.playNext(song) }, { vm.addToQueue(song) }) {
+                    SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(foundSongs, i) }
+                }
             }
             items(foundAlbums.size) { i ->
                 val album = foundAlbums[i]

@@ -66,6 +66,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.coerceAtLeast
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -108,6 +119,72 @@ private val artColors = listOf(
 
 /** Stable placeholder colour for an album or artist without artwork. */
 fun colorFor(key: String): Color = artColors[(key.hashCode() and 0x7fffffff) % artColors.size]
+
+/**
+ * Swipe a song to the right to play it next, to the left to add it at the end of the queue.
+ * The row springs back; a coloured pill grows in the space it uncovers.
+ */
+@Composable
+fun QueueSwipe(onPlayNext: () -> Unit, onAddToQueue: () -> Unit, content: @Composable () -> Unit) {
+    val view = LocalView.current
+    val next by rememberUpdatedState(onPlayNext)
+    val add by rememberUpdatedState(onAddToQueue)
+    var last by remember { mutableLongStateOf(0L) }
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            val now = android.os.SystemClock.uptimeMillis()
+            if (value != SwipeToDismissBoxValue.Settled && now - last > 700) {
+                last = now
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                if (value == SwipeToDismissBoxValue.StartToEnd) next() else add()
+            }
+            false
+        },
+        positionalThreshold = { it * 0.28f },
+    )
+    SwipeToDismissBox(
+        state = state,
+        backgroundContent = {
+            val offset = try { state.requireOffset() } catch (e: IllegalStateException) { 0f }
+            if (offset == 0f) return@SwipeToDismissBox
+            val toRight = offset > 0
+            val width = with(LocalDensity.current) { kotlin.math.abs(offset).toDp() }
+            val armed = state.targetValue != SwipeToDismissBoxValue.Settled
+            val iconScale by animateFloatAsState(if (armed) 1.15f else 0.85f, spring(dampingRatio = 0.45f), label = "swipeIcon")
+            val colors = if (toRight) listOf(Color(0xFF5B3CC4), Color(0xFF8B5CF6)) else listOf(Color(0xFF14B8A6), Color(0xFF0F766E))
+            Box(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 4.dp)) {
+                Row(
+                    modifier = Modifier
+                        .align(if (toRight) Alignment.CenterStart else Alignment.CenterEnd)
+                        .width((width - 10.dp).coerceAtLeast(0.dp))
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Brush.horizontalGradient(colors))
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = if (toRight) Arrangement.Start else Arrangement.End,
+                ) {
+                    Icon(
+                        imageVector = if (toRight) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.AutoMirrored.Rounded.QueueMusic,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale },
+                    )
+                    if (width > 120.dp) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(if (toRight) R.string.swipe_next else R.string.swipe_queue),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        },
+    ) { content() }
+}
 
 /** Only songs on the phone have options and a favourite state. */
 fun Song.hasOptions(): Boolean = id >= 0
