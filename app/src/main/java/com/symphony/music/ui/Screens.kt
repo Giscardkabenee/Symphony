@@ -57,6 +57,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -356,6 +361,10 @@ private fun DetailHeader(
     artistPhotos: Boolean = false,
     action: @Composable () -> Unit = {},
 ) {
+    if (albumId != null) {
+        CoverHeader(title, subtitle, albumId, label, onBack, onPlay, onShuffle, action)
+        return
+    }
     val context = LocalContext.current
     val fallback = colorFor(label)
     val tint by produceState(fallback, albumId) {
@@ -387,6 +396,96 @@ private fun DetailHeader(
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = onPlay, modifier = Modifier.weight(1f).height(50.dp)) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.play), fontWeight = FontWeight.Bold)
+            }
+            FilledTonalButton(onClick = onShuffle, modifier = Modifier.weight(1f).height(50.dp)) {
+                Icon(Icons.Rounded.Shuffle, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.shuffle), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+/** Album header: the cover across the whole width, melting into a blurred copy, then into the page. */
+@Composable
+private fun CoverHeader(
+    title: String,
+    subtitle: String,
+    albumId: Long,
+    label: String,
+    onBack: () -> Unit,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
+    action: @Composable () -> Unit,
+) {
+    val page = MaterialTheme.colorScheme.background
+    Column(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().aspectRatio(0.9f)) {
+            // Blurred copy, seen where the sharp cover fades out (blur from Android 12).
+            Artwork(
+                albumId, label,
+                Modifier.matchParentSize().graphicsLayer { scaleX = 1.15f; scaleY = 1.15f }.blur(60.dp),
+                RectangleShape,
+            )
+            // The sharp cover, fading out over its lower part.
+            Artwork(
+                albumId, label,
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0f to Color.Black,
+                                0.55f to Color.Black,
+                                1f to Color.Transparent,
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                    },
+                RectangleShape,
+            )
+            // Shade at the top for the status bar, page colour rising from the bottom.
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.35f),
+                        0.18f to Color.Transparent,
+                        0.55f to Color.Transparent,
+                        0.82f to page.copy(alpha = 0.8f),
+                        1f to page,
+                    )
+                )
+            )
+            Row(
+                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilledTonalIconButton(
+                    onClick = onBack,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.Black.copy(alpha = 0.35f), contentColor = Color.White),
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+                Spacer(Modifier.weight(1f))
+                action()
+            }
+            Column(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+        }
+        Row(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = onPlay, modifier = Modifier.weight(1f).height(50.dp)) {
                 Icon(Icons.Rounded.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
