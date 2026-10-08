@@ -199,6 +199,10 @@ class Prefs(context: Context) {
 
     suspend fun createPlaylist(name: String) = editPlaylists { if (name !in it) it[name] = emptyList() }
 
+    suspend fun setPlaylistOrder(name: String, ids: List<Long>) = editPlaylists { if (name in it) it[name] = ids }
+
+    suspend fun setFavorites(ids: List<Long>) { store.edit { it[FAVORITES] = encodeIds(ids) } }
+
     suspend fun deletePlaylist(name: String) = editPlaylists { it.remove(name) }
 
     suspend fun addToPlaylist(name: String, id: Long) = editPlaylists {

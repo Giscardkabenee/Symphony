@@ -38,6 +38,12 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalView
+import android.view.HapticFeedbackConstants
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -332,12 +338,22 @@ private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boole
 
 @Composable
 private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) -> Unit) {
+    // A local copy follows the finger; the player is told once the drag ends.
+    var order by remember(state.queue) { mutableStateOf(state.queue.withIndex().toList()) }
+    val listState = rememberLazyListState()
+    val reorder = rememberReorderableLazyListState(listState) { from, to ->
+        val a = order.indexOfFirst { it.index == from.key }
+        val b = order.indexOfFirst { it.index == to.key }
+        if (a >= 0 && b >= 0) order = order.toMutableList().apply { add(b, removeAt(a)) }
+    }
+    val view = LocalView.current
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(top = 44.dp, bottom = 12.dp),
     ) {
         state.current?.let { now ->
-            item {
+            item(key = "now") {
                 Row(Modifier.fillMaxWidth().padding(start = 28.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Artwork(now.albumId, now.album, Modifier.size(56.dp), RoundedCornerShape(10.dp))
                     Spacer(Modifier.width(14.dp))
@@ -354,7 +370,7 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) ->
                 }
             }
         }
-        item {
+        item(key = "header") {
             Row(Modifier.fillMaxWidth().padding(start = 28.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.queue), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
                 TextButton(onClick = { vm.clearQueue() }) {
@@ -362,24 +378,44 @@ private fun QueueList(state: PlayerState, vm: PlayerViewModel, onMore: (Song) ->
                 }
             }
         }
-        items(state.queue.size) { i ->
-            val song = state.queue[i]
-            val active = i == state.index
-            Row(
-                modifier = Modifier.fillMaxWidth().clickable { vm.jumpTo(i) }.padding(start = 28.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Artwork(song.albumId, song.album, Modifier.size(46.dp), RoundedCornerShape(8.dp))
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold)
-                    Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = Soft)
-                }
-                if (active) {
-                    Icon(Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.padding(horizontal = 12.dp))
-                } else {
-                    IconButton(onClick = { vm.removeFromQueue(i) }) {
-                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.remove), tint = Soft)
+        items(order, key = { it.index }) { entry ->
+            val song = entry.value
+            val active = entry.index == state.index
+            ReorderableItem(reorder, key = entry.index) { dragging ->
+                val lift by animateDpAsState(if (dragging) 8.dp else 0.dp, label = "lift")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(lift, RoundedCornerShape(14.dp))
+                        .background(if (dragging) Color.White.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(14.dp))
+                        .clickable { vm.jumpTo(entry.index) }
+                        .padding(start = 28.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Artwork(song.albumId, song.album, Modifier.size(46.dp), RoundedCornerShape(8.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold)
+                        Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = Soft)
+                    }
+                    if (active) {
+                        Icon(Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.padding(horizontal = 12.dp))
+                    } else {
+                        IconButton(onClick = { vm.removeFromQueue(entry.index) }) {
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.remove), tint = Soft)
+                        }
+                    }
+                    IconButton(
+                        onClick = {},
+                        modifier = Modifier.draggableHandle(
+                            onDragStarted = { view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) },
+                            onDragStopped = {
+                                val to = order.indexOfFirst { it.index == entry.index }
+                                if (to >= 0 && to != entry.index) vm.moveInQueue(entry.index, to)
+                            },
+                        ),
+                    ) {
+                        Icon(Icons.Rounded.DragHandle, contentDescription = stringResource(R.string.reorder), tint = Soft)
                     }
                 }
             }

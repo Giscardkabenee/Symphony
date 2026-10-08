@@ -21,6 +21,12 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.platform.LocalView
+import android.view.HapticFeedbackConstants
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.BlurOn
@@ -510,9 +516,18 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
     }
     val minutes = songs.sumOf { it.duration } / 60_000
     val subtitle = stringResource(R.string.songs_count, songs.size) + " · " + minutes + " min"
+    // Playlists you made (and Favourites) can be put in order by dragging the handle.
+    var order by remember(songs) { mutableStateOf(songs.withIndex().toList()) }
+    val listState = rememberLazyListState()
+    val reorder = rememberReorderableLazyListState(listState) { from, to ->
+        val a = order.indexOfFirst { it.index == from.key }
+        val b = order.indexOfFirst { it.index == to.key }
+        if (a >= 0 && b >= 0) order = order.toMutableList().apply { add(b, removeAt(a)) }
+    }
+    val view = LocalView.current
 
-    LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
-        item {
+    LazyColumn(state = listState, contentPadding = PaddingValues(bottom = BarSpace)) {
+        item(key = "header") {
             DetailHeader(title, subtitle, songs.firstOrNull()?.albumId, title, onBack,
                 onPlay = { vm.play(songs, 0) },
                 onShuffle = { vm.play(songs, 0, shuffle = true) },
@@ -525,16 +540,35 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
                 })
         }
         if (songs.isEmpty()) {
-            item { EmptyState(stringResource(R.string.empty_list)) }
+            item(key = "empty") { EmptyState(stringResource(R.string.empty_list)) }
         }
-        items(songs.size) { i ->
-            val song = songs[i]
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) {
-                    SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(songs, i) }
-                }
-                if (!smart) IconButton(onClick = { if (isFavorites) vm.toggleFavorite(song.id) else vm.removeFromPlaylist(name, song.id) }) {
-                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.remove), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        items(order, key = { it.index }) { entry ->
+            val song = entry.value
+            ReorderableItem(reorder, key = entry.index, enabled = !smart) { dragging ->
+                Row(
+                    modifier = Modifier.background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f)) {
+                        SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) {
+                            val list = order.map { it.value }
+                            vm.play(list, list.indexOf(song).coerceAtLeast(0))
+                        }
+                    }
+                    if (!smart) {
+                        IconButton(onClick = { if (isFavorites) vm.toggleFavorite(song.id) else vm.removeFromPlaylist(name, song.id) }) {
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.remove), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(
+                            onClick = {},
+                            modifier = Modifier.draggableHandle(
+                                onDragStarted = { view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) },
+                                onDragStopped = { vm.setPlaylistOrder(name, order.map { it.value.id }) },
+                            ),
+                        ) {
+                            Icon(Icons.Rounded.DragHandle, contentDescription = stringResource(R.string.reorder), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
         }

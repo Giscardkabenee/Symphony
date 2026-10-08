@@ -69,4 +69,5 @@ dependencies {
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("dev.chrisbanes.haze:haze:1.2.2")
+    implementation("sh.calvin.reorderable:reorderable:2.4.0")
 }

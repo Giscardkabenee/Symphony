@@ -431,6 +431,16 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         c.prepare()
         c.play()
     }
+    /** Moves a song in the play queue, as finished by a drag. */
+    fun moveInQueue(from: Int, to: Int) {
+        val c = controller ?: return
+        if (from in 0 until c.mediaItemCount && to in 0 until c.mediaItemCount && from != to) c.moveMediaItem(from, to)
+    }
+
+    fun setPlaylistOrder(name: String, ids: List<Long>) {
+        viewModelScope.launch { if (name == "__favorites__") prefs.setFavorites(ids) else prefs.setPlaylistOrder(name, ids) }
+    }
+
     fun createPlaylist(name: String) { viewModelScope.launch { prefs.createPlaylist(name) } }
     fun deletePlaylist(name: String) { viewModelScope.launch { prefs.deletePlaylist(name) } }
     fun addToPlaylist(name: String, id: Long) { viewModelScope.launch { prefs.addToPlaylist(name, id) } }

@@ -173,4 +173,5 @@
     <string name="sleep_left">La musique s\'arrête dans %1$s</string>
     <string name="sleep_at_end">La musique s\'arrête à la fin du titre</string>
     <string name="sleep_hint">La musique baisse doucement puis s\'arrête.</string>
+    <string name="reorder">Déplacer</string>
 </resources>
