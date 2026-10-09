@@ -694,6 +694,7 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
     val albumIds = remember(artist) { artist.songs.map { it.albumId }.toSet() }
     val artistAlbums = albums.filter { it.id in albumIds }
     val subtitle = stringResource(R.string.albums_count, artist.albumCount) + " · " + stringResource(R.string.songs_count, artist.songs.size)
+    ImmersivePage(artist.songs.firstOrNull()?.albumId, artist.name) {
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item {
             DetailHeader(artist.name, subtitle, null, artist.name, onBack, artistPhotos = settings.artistPhotos,
@@ -719,6 +720,7 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
             }
         }
     }
+}
 }
 
 @Composable

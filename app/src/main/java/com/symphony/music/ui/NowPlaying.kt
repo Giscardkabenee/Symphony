@@ -811,6 +811,27 @@ private fun Controls(
         val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
         val maxVolume = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
         var volume by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()) }
+        // Follow the phone's own volume buttons (and any other app changing it) while this screen is open.
+        DisposableEffect(audio) {
+            val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    val now = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    if (now != volume.roundToInt()) volume = now.toFloat()
+                }
+            }
+            context.contentResolver.registerContentObserver(android.provider.Settings.System.CONTENT_URI, true, observer)
+            val receiver = object : android.content.BroadcastReceiver() {
+                override fun onReceive(c: Context?, i: android.content.Intent?) { observer.onChange(false) }
+            }
+            androidx.core.content.ContextCompat.registerReceiver(
+                context, receiver, android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION"),
+                androidx.core.content.ContextCompat.RECEIVER_EXPORTED,
+            )
+            onDispose {
+                context.contentResolver.unregisterContentObserver(observer)
+                runCatching { context.unregisterReceiver(receiver) }
+            }
+        }
         val volumeLabel = stringResource(R.string.volume)
         if (showVolume) Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.VolumeDown, contentDescription = null, tint = Soft, modifier = Modifier.size(20.dp))
