@@ -39,7 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.symphony.music.R
-import com.symphony.music.data.ArtistInfo
+import com.symphony.music.data.ArtistBio
 import com.symphony.music.data.Release
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -102,7 +102,7 @@ fun LatestRelease(release: Release, ownedAlbum: Long?, onAlbum: (Long) -> Unit) 
 
 /** "About": the photo, fan count and a biography that opens up on tap. */
 @Composable
-fun ArtistAboutCard(name: String, info: ArtistInfo, photos: Boolean) {
+fun ArtistAboutCard(name: String, info: ArtistBio, photos: Boolean) {
     val context = LocalContext.current
     if (info.bio == null && info.fans <= 0) return
     var expanded by remember { mutableStateOf(false) }
@@ -172,7 +172,7 @@ fun ArtistAboutCard(name: String, info: ArtistInfo, photos: Boolean) {
 
 /** Recent news about the artist; each opens in the browser. */
 @Composable
-fun ArtistNews(info: ArtistInfo) {
+fun ArtistNews(info: ArtistBio) {
     if (info.news.isEmpty()) return
     val context = LocalContext.current
     Column(Modifier.fillMaxWidth()) {

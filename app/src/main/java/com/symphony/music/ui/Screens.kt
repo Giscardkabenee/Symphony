@@ -696,7 +696,7 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
     val artistAlbums = albums.filter { it.id in albumIds }
     val subtitle = stringResource(R.string.albums_count, artist.albumCount) + " · " + stringResource(R.string.songs_count, artist.songs.size)
     val context = LocalContext.current
-    val info by produceState<com.symphony.music.data.ArtistInfo?>(null, artist.name, settings.artistInfo) {
+    val info by produceState<com.symphony.music.data.ArtistBio?>(null, artist.name, settings.artistInfo) {
         value = if (settings.artistInfo) com.symphony.music.data.ArtistInfos.find(context, artist.name) else null
     }
     val latest = info?.latest

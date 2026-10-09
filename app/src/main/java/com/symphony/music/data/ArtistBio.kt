@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 data class Release(val title: String, val type: String, val date: String, val cover: String, val link: String)
 data class NewsItem(val title: String, val source: String, val link: String, val timeMs: Long)
-data class ArtistInfo(
+data class ArtistBio(
     val bio: String? = null,
     val bioUrl: String? = null,
     val fans: Int = 0,
@@ -36,9 +36,9 @@ data class ArtistInfo(
  */
 object ArtistInfos {
     private const val FRESH_MS = 12 * 3_600_000L
-    private val memory = ConcurrentHashMap<String, Pair<Long, ArtistInfo>>()
+    private val memory = ConcurrentHashMap<String, Pair<Long, ArtistBio>>()
 
-    suspend fun find(context: Context, name: String): ArtistInfo? = withContext(Dispatchers.IO) {
+    suspend fun find(context: Context, name: String): ArtistBio? = withContext(Dispatchers.IO) {
         if (name.isBlank() || name == "—") return@withContext null
         val dir = File(context.filesDir, "artist_info").apply { mkdirs() }
         val file = File(dir, Integer.toHexString(name.lowercase().hashCode()) + ".json")
@@ -60,13 +60,13 @@ object ArtistInfos {
         fresh
     }
 
-    private suspend fun fetch(name: String): ArtistInfo = coroutineScope {
+    private suspend fun fetch(name: String): ArtistBio = coroutineScope {
         val bio = async { runCatching { wikipedia(name) }.getOrNull() }
         val deezer = async { runCatching { deezer(name) }.getOrNull() }
         val news = async { runCatching { news(name) }.getOrNull() ?: emptyList() }
         val d = deezer.await()
         val b = bio.await()
-        ArtistInfo(b?.first, b?.second, d?.first ?: 0, d?.second, news.await())
+        ArtistBio(b?.first, b?.second, d?.first ?: 0, d?.second, news.await())
     }
 
     // ------------------------------------------------------------ Wikipedia
@@ -207,7 +207,7 @@ object ArtistInfos {
         }
     }
 
-    private fun encode(info: ArtistInfo) = JSONObject().apply {
+    private fun encode(info: ArtistBio) = JSONObject().apply {
         put("bio", info.bio ?: ""); put("bioUrl", info.bioUrl ?: ""); put("fans", info.fans)
         info.latest?.let {
             put("latest", JSONObject().put("title", it.title).put("type", it.type).put("date", it.date).put("cover", it.cover).put("link", it.link))
@@ -217,7 +217,7 @@ object ArtistInfos {
         })
     }
 
-    private fun decode(json: JSONObject): ArtistInfo {
+    private fun decode(json: JSONObject): ArtistBio {
         val latest = json.optJSONObject("latest")?.let {
             Release(it.optString("title"), it.optString("type"), it.optString("date"), it.optString("cover"), it.optString("link"))
         }
@@ -226,6 +226,6 @@ object ArtistInfos {
             val n = list.getJSONObject(it)
             NewsItem(n.optString("title"), n.optString("source"), n.optString("link"), n.optLong("time"))
         }
-        return ArtistInfo(json.optString("bio").ifBlank { null }, json.optString("bioUrl").ifBlank { null }, json.optInt("fans"), latest, news)
+        return ArtistBio(json.optString("bio").ifBlank { null }, json.optString("bioUrl").ifBlank { null }, json.optInt("fans"), latest, news)
     }
 }
