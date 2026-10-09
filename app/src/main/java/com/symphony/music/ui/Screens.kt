@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.RecordVoiceOver
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.MoreVert
@@ -694,6 +695,16 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
     val albumIds = remember(artist) { artist.songs.map { it.albumId }.toSet() }
     val artistAlbums = albums.filter { it.id in albumIds }
     val subtitle = stringResource(R.string.albums_count, artist.albumCount) + " · " + stringResource(R.string.songs_count, artist.songs.size)
+    val context = LocalContext.current
+    val info by produceState<com.symphony.music.data.ArtistInfo?>(null, artist.name, settings.artistInfo) {
+        value = if (settings.artistInfo) com.symphony.music.data.ArtistInfos.find(context, artist.name) else null
+    }
+    val latest = info?.latest
+    val ownedLatest = remember(latest, artistAlbums) {
+        latest?.let { r -> artistAlbums.firstOrNull { it.title.trim().equals(r.title.trim(), ignoreCase = true) }?.id }
+    }
+    var allSongs by remember(artist.name) { mutableStateOf(false) }
+    val shownSongs = if (allSongs || artist.songs.size <= 6) artist.songs.size else 5
     ImmersivePage(artist.songs.firstOrNull()?.albumId, artist.name) {
     LazyColumn(contentPadding = PaddingValues(bottom = BarSpace)) {
         item {
@@ -701,6 +712,7 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
                 onPlay = { vm.play(artist.songs, 0) },
                 onShuffle = { vm.play(artist.songs, 0, shuffle = true) })
         }
+        if (latest != null) item { LatestRelease(latest, ownedLatest, onAlbum) }
         if (artistAlbums.isNotEmpty()) {
             item { SectionHeader(stringResource(R.string.tab_albums)) }
             item {
@@ -713,11 +725,24 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
             }
         }
         item { SectionHeader(stringResource(R.string.songs)) }
-        items(artist.songs.size) { i ->
+        items(shownSongs) { i ->
             val song = artist.songs[i]
             QueueSwipe({ vm.playNext(song) }, { vm.addToQueue(song) }) {
                 SongRow(song, active = state.current?.id == song.id, onMore = { onMore(song) }) { vm.play(artist.songs, i) }
             }
+        }
+        if (artist.songs.size > 6) item {
+            TextButton(onClick = { allSongs = !allSongs }, modifier = Modifier.padding(start = 8.dp)) {
+                Text(
+                    if (allSongs) stringResource(R.string.read_less) else stringResource(R.string.show_all_songs, artist.songs.size),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+        info?.let { i ->
+            item { ArtistAboutCard(artist.name, i, settings.artistPhotos) }
+            item { ArtistNews(i) }
         }
     }
 }
@@ -996,6 +1021,8 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.Public, stringResource(R.string.online_lyrics), stringResource(R.string.online_lyrics_desc), settings.onlineLyrics) { vm.setFlag(Flags.ONLINE_LYRICS, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.AccountCircle, stringResource(R.string.artist_photos), stringResource(R.string.artist_photos_desc), settings.artistPhotos) { vm.setFlag(Flags.ARTIST_PHOTOS, it) }
+                HorizontalDivider(Modifier.padding(start = 56.dp))
+                SettingSwitch(Icons.Rounded.Info, stringResource(R.string.artist_info), stringResource(R.string.artist_info_desc), settings.artistInfo) { vm.setFlag(Flags.ARTIST_INFO, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.BlurOn, stringResource(R.string.blur_lyrics), stringResource(R.string.blur_lyrics_desc), settings.blurLyrics) { vm.setFlag(Flags.BLUR_LYRICS, it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))

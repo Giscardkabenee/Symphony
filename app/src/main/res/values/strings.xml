@@ -366,4 +366,20 @@
     <string name="dj_desc">Vos titres enchaînés comme par un DJ, avec sa voix entre les morceaux</string>
     <string name="dj_voice">Voix du DJ</string>
     <string name="dj_voice_desc">Pendant un DJ Mix, une voix annonce les titres (synthèse vocale du téléphone, hors ligne)</string>
+    <string name="artist_latest">Dernière sortie</string>
+    <string name="artist_about">À propos</string>
+    <string name="artist_news">Actualités</string>
+    <string name="artist_fans">%s fans sur Deezer</string>
+    <string name="read_more">Lire la suite</string>
+    <string name="read_less">Réduire</string>
+    <string name="show_all_songs">Afficher les %d titres</string>
+    <string name="source_wikipedia">Wikipédia</string>
+    <string name="in_library">Dans ta musique</string>
+    <string name="not_in_library">Pas encore dans ta musique</string>
+    <string name="release_album">Album</string>
+    <string name="release_single">Single</string>
+    <string name="release_ep">EP</string>
+    <string name="release_compilation">Compilation</string>
+    <string name="artist_info">Infos sur les artistes</string>
+    <string name="artist_info_desc">Biographie (Wikipédia), dernière sortie (Deezer) et actualités (Google Actualités). Seul le nom de l\'artiste est envoyé</string>
 </resources>

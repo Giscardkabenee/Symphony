@@ -365,4 +365,20 @@
     <string name="dj_desc">Your songs mixed like a DJ would, with the DJ talking between tracks</string>
     <string name="dj_voice">DJ voice</string>
     <string name="dj_voice_desc">During a DJ mix, a voice announces the songs (the phone\'s text-to-speech, offline)</string>
+    <string name="artist_latest">Latest release</string>
+    <string name="artist_about">About</string>
+    <string name="artist_news">News</string>
+    <string name="artist_fans">%s fans on Deezer</string>
+    <string name="read_more">Read more</string>
+    <string name="read_less">Show less</string>
+    <string name="show_all_songs">Show all %d songs</string>
+    <string name="source_wikipedia">Wikipedia</string>
+    <string name="in_library">In your music</string>
+    <string name="not_in_library">Not in your music yet</string>
+    <string name="release_album">Album</string>
+    <string name="release_single">Single</string>
+    <string name="release_ep">EP</string>
+    <string name="release_compilation">Compilation</string>
+    <string name="artist_info">Artist info</string>
+    <string name="artist_info_desc">Biography (Wikipedia), latest release (Deezer) and news (Google News). Only the artist name is sent</string>
 </resources>

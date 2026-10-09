@@ -31,6 +31,7 @@ object Flags {
     const val USB_DAC = "usb_dac"
     const val AUTOMIX = "automix"
     const val DJ_VOICE = "dj_voice"
+    const val ARTIST_INFO = "artist_info"
 }
 
 /** Number of bands the equalizer screen offers. */
@@ -75,6 +76,7 @@ data class AppSettings(
     val headphone: HeadphoneProfile? = null,
     val headphoneOn: Boolean = true,
     val djVoice: Boolean = true,
+    val artistInfo: Boolean = true,
 )
 
 class Prefs(context: Context) {
@@ -114,6 +116,7 @@ class Prefs(context: Context) {
             headphone = HeadphoneProfile.decode(p[stringPreferencesKey("hp_profile")]),
             headphoneOn = p[booleanPreferencesKey("hp_enabled")] ?: true,
             djVoice = p[booleanPreferencesKey(Flags.DJ_VOICE)] ?: true,
+            artistInfo = p[booleanPreferencesKey(Flags.ARTIST_INFO)] ?: true,
         )
     }
 
