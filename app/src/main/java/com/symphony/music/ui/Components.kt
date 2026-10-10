@@ -1,5 +1,10 @@
 package com.symphony.music.ui
 
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.ui.input.pointer.pointerInput
 import android.content.Context
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.LocalIndication
@@ -505,15 +510,30 @@ fun FloatingBar(
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
     hideLabels: Boolean = false,
+    onPrevious: () -> Unit = {},
     classic: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val pill = CircleShape
+    val context = LocalContext.current
     val dark = scheme.background.luminance() < 0.5f
-    // In dark mode the bar is a lifted grey, fully opaque, and the marker a soft light grey rather than pure white.
-    val face = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest.copy(alpha = 0.95f)
+    val song = state.current
+    // One capsule for the mini-player and the tabs, lightly tinted with the cover's colour.
+    val found by produceState<Color?>(null, song?.albumId) {
+        value = song?.let { dominantColor(context, artworkUri(it.albumId)) }
+    }
+    val base = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest
+    val capsule by animateColorAsState(
+        found?.let { lerp(base, it, if (dark) 0.24f else 0.10f) } ?: base,
+        tween(600),
+        label = "capsule",
+    )
+    val accent by animateColorAsState(
+        found?.let { if (dark) lerp(it, Color.White, 0.35f) else lerp(it, Color.Black, 0.15f) } ?: scheme.onSurface,
+        tween(600),
+        label = "accent",
+    )
     val edge = scheme.outlineVariant.copy(alpha = if (dark) 0.3f else 0.45f)
-    val marker = scheme.selection
+    val shape = RoundedCornerShape(30.dp)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -521,42 +541,47 @@ fun FloatingBar(
             .background(
                 Brush.verticalGradient(
                     0f to scheme.background.copy(alpha = 0f),
-                    (if (state.current != null) 0.16f else 0.3f) to scheme.background.copy(alpha = 0.92f),
-                    (if (state.current != null) 0.3f else 0.5f) to scheme.background,
+                    0.25f to scheme.background.copy(alpha = 0.92f),
+                    0.45f to scheme.background,
                     1f to scheme.background,
                 )
             )
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        val song = state.current
-        AnimatedVisibility(
-            visible = song != null,
-            enter = fadeIn(tween(260)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow), initialScale = 0.85f),
-            exit = fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.9f),
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .shadow(18.dp, shape, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.2f))
+                .clip(shape)
+                .background(capsule)
+                .border(1.dp, edge, shape)
+                .animateContentSize(spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)),
         ) {
             if (song != null) {
-                val source = remember { MutableInteractionSource() }
-                val pressed by source.collectIsPressedAsState()
-                val press by animateFloatAsState(if (pressed) 0.97f else 1f, spring(dampingRatio = 0.5f), label = "miniPress")
+                // Swipe the mini-player sideways to change song; it follows the finger and springs back.
+                val view = LocalView.current
+                val scope = rememberCoroutineScope()
+                val shift = remember { androidx.compose.animation.core.Animatable(0f) }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp)
-                        .graphicsLayer {
-                            scaleX = press
-                            scaleY = press
+                        .height(66.dp)
+                        .clickable(onClick = onOpenPlayer)
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    val x = shift.value
+                                    if (x < -110f) { onNext(); view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK) }
+                                    else if (x > 110f) { onPrevious(); view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK) }
+                                    scope.launch { shift.animateTo(0f, spring(dampingRatio = 0.6f)) }
+                                },
+                                onDragCancel = { scope.launch { shift.animateTo(0f, spring(dampingRatio = 0.6f)) } },
+                            ) { _, amount -> scope.launch { shift.snapTo((shift.value + amount * 0.6f).coerceIn(-220f, 220f)) } }
                         }
-                        .shadow(16.dp, pill, ambientColor = Color.Black.copy(alpha = 0.16f), spotColor = Color.Black.copy(alpha = 0.16f))
-                        .clip(pill)
-                        .background(face)
-                        .border(1.dp, edge, pill)
-                        .clickable(interactionSource = source, indication = LocalIndication.current, onClick = onOpenPlayer)
                         .padding(start = 10.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // A new song slides in from below.
                     androidx.compose.animation.AnimatedContent(
                         targetState = song,
                         transitionSpec = {
@@ -564,11 +589,14 @@ fun FloatingBar(
                                 (slideOutVertically(tween(300)) { -it } + fadeOut(tween(220)))
                         },
                         contentKey = { it.id },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).graphicsLayer {
+                            translationX = shift.value
+                            alpha = 1f - (kotlin.math.abs(shift.value) / 400f)
+                        },
                         label = "miniSong",
                     ) { s ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Artwork(s.albumId, s.album, Modifier.size(44.dp), RoundedCornerShape(12.dp))
+                            Artwork(s.albumId, s.album, Modifier.size(46.dp), RoundedCornerShape(12.dp))
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(s.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -577,7 +605,6 @@ fun FloatingBar(
                         }
                     }
                     IconButton(onClick = onToggle) {
-                        // Play and pause swap with a small turn and pop.
                         androidx.compose.animation.AnimatedContent(
                             targetState = state.isPlaying,
                             transitionSpec = {
@@ -597,41 +624,49 @@ fun FloatingBar(
                         Icon(Icons.Rounded.SkipNext, stringResource(R.string.next), Modifier.size(26.dp))
                     }
                 }
+                // Progress, in the cover's colour.
+                val fraction = if (state.duration > 0) (state.position.toFloat() / state.duration).coerceIn(0f, 1f) else 0f
+                Box(
+                    Modifier
+                        .padding(horizontal = 18.dp)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(scheme.onSurface.copy(alpha = 0.12f)),
+                ) {
+                    Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(accent))
+                }
             }
-        }
-        // Tabs: equal slots, a dark marker gliding under the chosen one.
-        val items = tabs.map { Triple(it.route, it.label, it.icon) } + Triple("search", R.string.search, Icons.Rounded.Search)
-        val selected = items.indexOfFirst { it.first == route }
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(66.dp)
-                .shadow(16.dp, pill, ambientColor = Color.Black.copy(alpha = 0.16f), spotColor = Color.Black.copy(alpha = 0.16f))
-                .clip(pill)
-                .background(face)
-                .border(1.dp, edge, pill)
-                .padding(7.dp),
-        ) {
-            val slot = maxWidth / items.size
-            val markerX by animateDpAsState(
-                targetValue = slot * selected.coerceAtLeast(0),
-                animationSpec = spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessMediumLow),
-                label = "marker",
-            )
-            val markerAlpha by animateFloatAsState(if (selected >= 0) 1f else 0f, tween(200), label = "markerAlpha")
-            Box(
-                Modifier
-                    .offset(x = markerX)
-                    .width(slot)
-                    .fillMaxHeight()
-                    .graphicsLayer { alpha = markerAlpha }
-                    .clip(pill)
-                    .background(marker)
-            )
-            Row(Modifier.fillMaxSize()) {
-                items.forEachIndexed { i, (r, label, icon) ->
-                    TabSlot(icon, stringResource(label), i == selected, !hideLabels, Modifier.width(slot).fillMaxHeight()) {
-                        if (r == "search") onSearch() else onTab(r)
+            // Tabs: equal slots, a soft marker gliding under the chosen one.
+            val items = tabs.map { Triple(it.route, it.label, it.icon) } + Triple("search", R.string.search, Icons.Rounded.Search)
+            val selected = items.indexOfFirst { it.first == route }
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(62.dp)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+            ) {
+                val slot = maxWidth / items.size
+                val markerX by animateDpAsState(
+                    targetValue = slot * selected.coerceAtLeast(0),
+                    animationSpec = spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessMediumLow),
+                    label = "marker",
+                )
+                val markerAlpha by animateFloatAsState(if (selected >= 0) 1f else 0f, tween(200), label = "markerAlpha")
+                Box(
+                    Modifier
+                        .offset(x = markerX)
+                        .width(slot)
+                        .fillMaxHeight()
+                        .graphicsLayer { alpha = markerAlpha }
+                        .clip(CircleShape)
+                        .background(scheme.onSurface.copy(alpha = if (dark) 0.14f else 0.08f))
+                )
+                Row(Modifier.fillMaxSize()) {
+                    items.forEachIndexed { i, (r, label, icon) ->
+                        TabSlot(icon, stringResource(label), i == selected, !hideLabels, Modifier.width(slot).fillMaxHeight(), selectedTint = scheme.onSurface) {
+                            if (r == "search") onSearch() else onTab(r)
+                        }
                     }
                 }
             }
@@ -640,9 +675,9 @@ fun FloatingBar(
 }
 
 @Composable
-private fun TabSlot(icon: ImageVector, label: String, selected: Boolean, showLabel: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun TabSlot(icon: ImageVector, label: String, selected: Boolean, showLabel: Boolean, modifier: Modifier, selectedTint: Color? = null, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val tint by animateColorAsState(if (selected) scheme.surface else scheme.onSurfaceVariant, tween(260), label = "tint")
+    val tint by animateColorAsState(if (selected) (selectedTint ?: scheme.surface) else scheme.onSurfaceVariant, tween(260), label = "tint")
     // Physical feel: the slot sinks under the finger, springs back, and the phone gives a short tick.
     val view = LocalView.current
     val source = remember { MutableInteractionSource() }

@@ -218,6 +218,7 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             onOpenPlayer = { playerOpen = true },
             onToggle = { vm.toggle() },
             onNext = { vm.next() },
+            onPrevious = { vm.previous() },
             modifier = Modifier.align(Alignment.BottomCenter),
             hideLabels = settings.hideLabels,
             classic = settings.classicBar,
