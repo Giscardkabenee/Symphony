@@ -1,5 +1,7 @@
 package com.symphony.music.ui
 
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.rememberCoroutineScope
@@ -207,6 +209,12 @@ fun Modifier.playerChip(): Modifier = this
     .clip(CircleShape)
     .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.34f), Color.White.copy(alpha = 0.22f))))
     .border(0.6.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+
+/** Where the mini-player and its cover sit, so the full player can grow out of them. */
+object PlayerMorph {
+    var capsule by androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+    var cover by androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+}
 
 /** The one colour for "selected" everywhere (pills, play buttons, switches, tab marker): soft light grey in dark mode. */
 val androidx.compose.material3.ColorScheme.selection: Color
@@ -567,6 +575,7 @@ fun FloatingBar(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .onGloballyPositioned { PlayerMorph.capsule = it.boundsInRoot() }
                         .height(66.dp)
                         .clickable(onClick = onOpenPlayer)
                         .pointerInput(Unit) {
@@ -597,7 +606,7 @@ fun FloatingBar(
                         label = "miniSong",
                     ) { s ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Artwork(s.albumId, s.album, Modifier.size(46.dp), RoundedCornerShape(12.dp))
+                            Artwork(s.albumId, s.album, Modifier.size(46.dp).onGloballyPositioned { PlayerMorph.cover = it.boundsInRoot() }, RoundedCornerShape(12.dp))
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(s.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)

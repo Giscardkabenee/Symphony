@@ -1,5 +1,16 @@
 package com.symphony.music
 
+import kotlin.math.roundToInt
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.animateFloatAsState
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -252,21 +263,72 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
         )
         }
 
-        AnimatedVisibility(
-            visible = playerOpen && state.current != null,
-            // The player rises on a soft spring and drops away a little faster.
-            enter = slideInVertically(spring(dampingRatio = 0.92f, stiffness = 420f)) { it } + fadeIn(tween(180)),
-            exit = slideOutVertically(tween(280, easing = FastOutSlowInEasing)) { it } + fadeOut(tween(220, delayMillis = 60)),
-        ) {
-            NowPlaying(
-                vm = vm,
-                onClose = { playerOpen = false },
-                onMore = openMenu,
-                onArtist = {
-                    playerOpen = false
-                    openArtist(it)
-                },
-            )
+        // The full player grows out of the mini-player: the sheet widens from the capsule to the whole
+        // screen with its corners straightening, while the cover flies from its small square to the top.
+        val opening = playerOpen && state.current != null
+        val openness by animateFloatAsState(
+            targetValue = if (opening) 1f else 0f,
+            animationSpec = if (opening) spring(dampingRatio = 0.86f, stiffness = 300f) else spring(dampingRatio = 1f, stiffness = 420f),
+            label = "open",
+        )
+        val nowSong = state.current
+        if (openness > 0.001f && nowSong != null) {
+            val p = openness
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .drawWithContent {
+                        val from = com.symphony.music.ui.PlayerMorph.capsule
+                            ?: androidx.compose.ui.geometry.Rect(0f, size.height * 0.86f, size.width, size.height)
+                        val l = from.left + (0f - from.left) * p
+                        val t = from.top + (0f - from.top) * p
+                        val r = from.right + (size.width - from.right) * p
+                        val b = from.bottom + (size.height - from.bottom) * p
+                        val radius = (1f - p) * 30.dp.toPx()
+                        val path = androidx.compose.ui.graphics.Path().apply {
+                            addRoundRect(androidx.compose.ui.geometry.RoundRect(l, t, r, b, androidx.compose.ui.geometry.CornerRadius(radius)))
+                        }
+                        clipPath(path) { this@drawWithContent.drawContent() }
+                    },
+            ) {
+                Box(
+                    Modifier.fillMaxSize().graphicsLayer {
+                        alpha = (p * 3f).coerceIn(0f, 1f)
+                        translationY = (1f - p) * 48.dp.toPx()
+                    },
+                ) {
+                    NowPlaying(
+                        vm = vm,
+                        onClose = { playerOpen = false },
+                        onMore = openMenu,
+                        onArtist = {
+                            playerOpen = false
+                            openArtist(it)
+                        },
+                    )
+                }
+            }
+            // The flying cover, from the mini-player's square to the top of the screen; it melts
+            // into the player's own cover in the last moments.
+            val start = com.symphony.music.ui.PlayerMorph.cover
+            if (start != null && p < 0.995f) {
+                val density = LocalDensity.current
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val w = constraints.maxWidth.toFloat()
+                    val left = start.left * (1f - p)
+                    val top = start.top * (1f - p)
+                    val side = start.width + (w - start.width) * p
+                    com.symphony.music.ui.Artwork(
+                        nowSong.albumId,
+                        nowSong.album,
+                        Modifier
+                            .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
+                            .size(with(density) { side.toDp() })
+                            .graphicsLayer { alpha = ((1f - p) / 0.15f).coerceIn(0f, 1f) },
+                        RoundedCornerShape((12f * (1f - p)).dp),
+                    )
+                }
+            }
         }
     }
 
