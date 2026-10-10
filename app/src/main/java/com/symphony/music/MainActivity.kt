@@ -17,6 +17,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -190,7 +193,30 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
 
     Box(Modifier.fillMaxSize()) {
         CompositionLocalProvider(com.symphony.music.ui.LocalIsPlaying provides state.isPlaying) {
-        NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize().hazeSource(hazeState)) {
+        // Tabs cross-fade quickly; detail pages slide in from the right and back out the same way.
+        val tabRoutes = setOf("home", "music", "search")
+        fun between(a: String?, b: String?) = a in tabRoutes && b in tabRoutes
+        NavHost(
+            navController = nav,
+            startDestination = "home",
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+            enterTransition = {
+                if (between(initialState.destination.route, targetState.destination.route)) fadeIn(tween(200))
+                else slideInHorizontally(tween(340, easing = FastOutSlowInEasing)) { it / 4 } + fadeIn(tween(260))
+            },
+            exitTransition = {
+                if (between(initialState.destination.route, targetState.destination.route)) fadeOut(tween(160))
+                else slideOutHorizontally(tween(340, easing = FastOutSlowInEasing)) { -it / 12 } + fadeOut(tween(220))
+            },
+            popEnterTransition = {
+                if (between(initialState.destination.route, targetState.destination.route)) fadeIn(tween(200))
+                else slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { -it / 12 } + fadeIn(tween(240))
+            },
+            popExitTransition = {
+                if (between(initialState.destination.route, targetState.destination.route)) fadeOut(tween(160))
+                else slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { it / 4 } + fadeOut(tween(200))
+            },
+        ) {
             composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum, openArtist) }
             composable("music") { MusicScreen(vm, openAlbum, openArtist, openPlaylist, openMenu) }
             composable("search") { SearchScreen(vm, openAlbum, openArtist, openMenu) }
@@ -227,8 +253,9 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
 
         AnimatedVisibility(
             visible = playerOpen && state.current != null,
-            enter = slideInVertically(tween(420, easing = FastOutSlowInEasing)) { it } + fadeIn(tween(250)),
-            exit = slideOutVertically(tween(320, easing = FastOutSlowInEasing)) { it } + fadeOut(tween(250)),
+            // The player rises on a soft spring and drops away a little faster.
+            enter = slideInVertically(spring(dampingRatio = 0.92f, stiffness = 420f)) { it } + fadeIn(tween(180)),
+            exit = slideOutVertically(tween(280, easing = FastOutSlowInEasing)) { it } + fadeOut(tween(220, delayMillis = 60)),
         ) {
             NowPlaying(
                 vm = vm,

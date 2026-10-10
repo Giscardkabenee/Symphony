@@ -18,11 +18,11 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build debug APK
+      - name: Build release APK
         run: |
           chmod +x gradlew
           set -o pipefail
-          ./gradlew assembleDebug -PbuildNumber=${{ github.run_number }} 2>&1 | tee build.log
+          ./gradlew assembleRelease -PbuildNumber=${{ github.run_number }} 2>&1 | tee build.log
       - name: Report compile errors
         if: failure()
         run: |
@@ -31,12 +31,12 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: symphony-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/release/*.apk
       - name: Publish APK as a release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Symphony.apk
+          cp app/build/outputs/apk/release/app-release.apk Symphony.apk
           # Reuse the release when it exists; create it only the first time.
           if gh release view latest >/dev/null 2>&1; then
             gh release upload latest Symphony.apk --clobber

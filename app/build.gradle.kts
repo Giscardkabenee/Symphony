@@ -27,7 +27,11 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Optimised build: Compose runs far smoother than in a debug build.
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Same key as before, so the update installs over the existing app.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
