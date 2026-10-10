@@ -261,7 +261,8 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                 Crossfade(
                     targetState = song,
                     animationSpec = tween(600),
-                    modifier = Modifier.fillMaxWidth().fillMaxHeight(0.6f).graphicsLayer { alpha = coverAlpha },
+                    // Square, so the whole cover is shown (no titles cut off on the sides).
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).graphicsLayer { alpha = coverAlpha },
                     label = "coverArt",
                 ) { s ->
                     Artwork(
@@ -275,8 +276,8 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                                 drawRect(
                                     brush = Brush.verticalGradient(
                                         0f to Color.Black,
-                                        0.5f to Color.Black,
-                                        0.78f to Color.Black.copy(alpha = 0.45f),
+                                        0.72f to Color.Black,
+                                        0.9f to Color.Black.copy(alpha = 0.5f),
                                         1f to Color.Transparent,
                                     ),
                                     blendMode = BlendMode.DstIn,
@@ -840,6 +841,7 @@ private fun Controls(
                 max = maxVolume.toFloat(),
                 label = volumeLabel,
                 modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+                subtle = true,
                 onChange = {
                     volume = it
                     audio.setStreamVolume(AudioManager.STREAM_MUSIC, it.roundToInt(), 0)
@@ -884,11 +886,15 @@ private fun ThinSlider(
     max: Float,
     label: String,
     modifier: Modifier = Modifier,
+    subtle: Boolean = false,
     onFinished: () -> Unit = {},
     onChange: (Float) -> Unit,
 ) {
     var active by remember { mutableStateOf(false) }
-    val thickness by animateDpAsState(if (active) 11.dp else 7.dp, label = "thickness")
+    val thickness by animateDpAsState(
+        if (subtle) (if (active) 9.dp else 4.dp) else (if (active) 11.dp else 7.dp),
+        label = "thickness",
+    )
     val fraction = if (max > 0f) (value / max).coerceIn(0f, 1f) else 0f
     val change by rememberUpdatedState(onChange)
     val finished by rememberUpdatedState(onFinished)
@@ -928,8 +934,8 @@ private fun ThinSlider(
             },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Box(Modifier.fillMaxWidth().height(thickness).clip(CircleShape).background(Color.White.copy(alpha = 0.3f))) {
-            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Color.White))
+        Box(Modifier.fillMaxWidth().height(thickness).clip(CircleShape).background(Color.White.copy(alpha = if (subtle) 0.22f else 0.3f))) {
+            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Color.White.copy(alpha = if (subtle && !active) 0.7f else 1f)))
         }
     }
 }

@@ -222,8 +222,9 @@ private fun AnimatedHeader(titles: List<String>, lines: List<String>, action: @C
             androidx.compose.animation.AnimatedContent(
                 targetState = lines.getOrElse(lineIndex) { "" },
                 transitionSpec = {
-                    (slideInVertically(tween(450)) { it } + fadeIn(tween(450))) togetherWith
-                        (slideOutVertically(tween(350)) { -it } + fadeOut(tween(250)))
+                    ((slideInVertically(tween(450)) { it / 3 } + fadeIn(tween(450, delayMillis = 120))) togetherWith
+                        (slideOutVertically(tween(300)) { -it / 3 } + fadeOut(tween(200))))
+                        .using(androidx.compose.animation.SizeTransform(clip = false))
                 },
                 label = "line",
             ) { line ->
@@ -547,7 +548,7 @@ fun HomeScreen(
             Button(
                 onClick = { vm.play(songs, 0, shuffle = true) },
                 modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 22.dp).height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.selection, contentColor = MaterialTheme.colorScheme.surface),
             ) {
                 Icon(Icons.Rounded.Shuffle, contentDescription = null)
                 Spacer(Modifier.width(10.dp))
@@ -566,7 +567,7 @@ private fun Pill(text: String, selected: Boolean, modifier: Modifier = Modifier,
         modifier = modifier
             .height(40.dp)
             .clip(CircleShape)
-            .background(if (selected) scheme.onSurface else scheme.surfaceContainerHigh)
+            .background(if (selected) scheme.selection else scheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center,
@@ -610,7 +611,7 @@ private fun PlayButtons(onPlay: () -> Unit, onShuffle: () -> Unit, modifier: Mod
         Button(
             onClick = onPlay,
             modifier = Modifier.weight(1f).height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.selection, contentColor = MaterialTheme.colorScheme.surface),
         ) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = null)
             Spacer(Modifier.width(6.dp))
@@ -642,6 +643,45 @@ private fun EntryRow(title: String, detail: String, onClick: () -> Unit, art: @C
 }
 
 private val sortShort = listOf(R.string.sort_short_az, R.string.sort_short_za, R.string.sort_short_artist, R.string.sort_short_added, R.string.sort_short_modified, R.string.sort_short_duration)
+
+/** Sort and list / grid as two round buttons, for the top right corner of the Music title. */
+@Composable
+private fun CompactControls(grid: Boolean, onGrid: (Boolean) -> Unit, sort: Int, onSort: (Int) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    var open by remember { mutableStateOf(false) }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(scheme.surfaceContainerHigh)
+                    .clickable(onClickLabel = stringResource(R.string.sort)) { open = true },
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = stringResource(R.string.sort), modifier = Modifier.size(20.dp)) }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = RoundedCornerShape(18.dp)) {
+                sortLabels.forEachIndexed { i, label ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(label), fontWeight = if (i == sort) FontWeight.Bold else FontWeight.Normal) },
+                        trailingIcon = { if (i == sort) Icon(Icons.Rounded.Check, contentDescription = null) },
+                        onClick = {
+                            onSort(i)
+                            open = false
+                        },
+                    )
+                }
+            }
+        }
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(scheme.surfaceContainerHigh)
+                .clickable(onClickLabel = stringResource(if (grid) R.string.view_list else R.string.view_grid)) { onGrid(!grid) },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
+                contentDescription = stringResource(if (grid) R.string.view_list else R.string.view_grid),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
 
 /** Sort pill with its menu on the left, list / grid switch on the right. */
 @Composable
@@ -688,7 +728,7 @@ private fun ListControls(grid: Boolean, onGrid: (Boolean) -> Unit, sort: Int, on
                     modifier = Modifier
                         .size(width = 46.dp, height = 32.dp)
                         .clip(CircleShape)
-                        .background(if (selected) scheme.onSurface else Color.Transparent)
+                        .background(if (selected) scheme.selection else Color.Transparent)
                         .clickable(onClickLabel = stringResource(if (value) R.string.view_grid else R.string.view_list)) { onGrid(value) },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -767,7 +807,22 @@ fun MusicScreen(
             biggest?.let { add(stringResource(R.string.music_top_artist, it.name, it.songs.size)) }
             longest?.let { add(stringResource(R.string.music_longest_album, it.title)) }
         }
-        AnimatedHeader(listOf(stringResource(R.string.tab_music)), facts)
+        AnimatedHeader(listOf(stringResource(R.string.tab_music)), facts) {
+            // Sort and layout live up here, so the songs start higher.
+            if (tab < 3) CompactControls(
+                grid = grid,
+                onGrid = { value ->
+                    grids = grids.toMutableList().also { it[tab] = value }
+                    store.edit().putBoolean("music_grid_$tab", value).apply()
+                },
+                sort = sort,
+                onSort = { value ->
+                    sort = value
+                    store.edit().putInt("music_sort", value).apply()
+                },
+            )
+            Spacer(Modifier.width(12.dp))
+        }
         // Four equal pills, so none is cut off at the edge.
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             labels.forEachIndexed { i, label ->
@@ -790,7 +845,6 @@ fun MusicScreen(
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) })
-                        controls()
                     }
                 }
                 items(sortedSongs.size) { i ->
@@ -814,7 +868,6 @@ fun MusicScreen(
                 item {
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         PlayButtons({ vm.play(sortedSongs, 0) }, { vm.play(sortedSongs, 0, shuffle = true) })
-                        controls()
                     }
                 }
                 items(sortedSongs.size, key = { sortedSongs[it].id }) { i ->
@@ -831,14 +884,12 @@ fun MusicScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                item(span = { GridItemSpan(maxLineSpan) }) { controls() }
                 items(sortedAlbums.size) { i ->
                     val album = sortedAlbums[i]
                     AlbumCard(album) { onAlbum(album.id) }
                 }
             }
             tab == 1 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
-                item { Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { controls() } }
                 items(sortedAlbums.size) { i ->
                     val album = sortedAlbums[i]
                     EntryRow(album.title, album.artist + " · " + stringResource(R.string.songs_count, album.songs.size), { onAlbum(album.id) }) {
@@ -853,7 +904,6 @@ fun MusicScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                item(span = { GridItemSpan(maxLineSpan) }) { controls() }
                 items(sortedArtists.size) { i ->
                     val artist = sortedArtists[i]
                     Column(
@@ -868,7 +918,6 @@ fun MusicScreen(
                 }
             }
             tab == 2 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
-                item { Box(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) { controls() } }
                 items(sortedArtists.size) { i ->
                     val artist = sortedArtists[i]
                     EntryRow(artist.name, stringResource(R.string.songs_count, artist.songs.size), { onArtist(artist.name) }) {

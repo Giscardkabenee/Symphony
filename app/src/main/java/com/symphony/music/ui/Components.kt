@@ -200,8 +200,12 @@ fun QueueSwipe(onPlayNext: () -> Unit, onAddToQueue: () -> Unit, content: @Compo
 /** Round button over the player's backdrop: a soft frosted disc with a hairline highlight, no heavy rim. */
 fun Modifier.playerChip(): Modifier = this
     .clip(CircleShape)
-    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.12f))))
-    .border(0.6.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.34f), Color.White.copy(alpha = 0.22f))))
+    .border(0.6.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+
+/** The one colour for "selected" everywhere (pills, play buttons, switches, tab marker): soft light grey in dark mode. */
+val androidx.compose.material3.ColorScheme.selection: Color
+    get() = if (background.luminance() < 0.5f) Color(0xFFD6D6DC) else onSurface
 
 /** Whether the player is playing right now, for the little animated bars in the lists. */
 val LocalIsPlaying = compositionLocalOf { false }
@@ -507,7 +511,7 @@ fun FloatingBar(
     // In dark mode the bar is a lifted grey, fully opaque, and the marker a soft light grey rather than pure white.
     val face = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest.copy(alpha = 0.95f)
     val edge = scheme.outlineVariant.copy(alpha = if (dark) 0.3f else 0.45f)
-    val marker = if (dark) Color(0xFFD6D6DC) else scheme.onSurface
+    val marker = scheme.selection
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -515,7 +519,8 @@ fun FloatingBar(
             .background(
                 Brush.verticalGradient(
                     0f to scheme.background.copy(alpha = 0f),
-                    0.35f to scheme.background.copy(alpha = 0.85f),
+                    (if (state.current != null) 0.16f else 0.3f) to scheme.background.copy(alpha = 0.92f),
+                    (if (state.current != null) 0.3f else 0.5f) to scheme.background,
                     1f to scheme.background,
                 )
             )
