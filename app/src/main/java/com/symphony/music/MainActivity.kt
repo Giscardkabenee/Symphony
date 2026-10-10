@@ -1,5 +1,6 @@
 package com.symphony.music
 
+import androidx.compose.ui.graphics.luminance
 import kotlin.math.roundToInt
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
@@ -278,6 +279,8 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             value = state.current?.let { com.symphony.music.ui.dominantColor(morphContext, it.artUri) }
         }
         val fallbackSheet = MaterialTheme.colorScheme.surfaceContainerHigh
+        val capsuleColor = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) MaterialTheme.colorScheme.surfaceContainerHigh
+            else MaterialTheme.colorScheme.surfaceContainerLowest
         val sheetColor = coverTint?.let { androidx.compose.ui.graphics.lerp(it, androidx.compose.ui.graphics.Color.Black, 0.45f) } ?: fallbackSheet
         if (openness > 0.001f && nowSong != null) {
             val p = openness
@@ -296,8 +299,11 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
                             addRoundRect(androidx.compose.ui.geometry.RoundRect(l, t, r, b, androidx.compose.ui.geometry.CornerRadius(radius)))
                         }
                         clipPath(path) {
-                            // The sheet itself, a plain card while it is still small.
-                            drawRect(sheetColor)
+                            // The sheet itself: it starts as the capsule (same colour, fading in over the
+                            // mini-player) and turns into the player's colour as it grows, so no dark box
+                            // ever flashes on a light page.
+                            val tone = androidx.compose.ui.graphics.lerp(capsuleColor, sheetColor, (p / 0.5f).coerceIn(0f, 1f))
+                            drawRect(tone, alpha = (p / 0.15f).coerceIn(0f, 1f))
                             this@drawWithContent.drawContent()
                         }
                     },
