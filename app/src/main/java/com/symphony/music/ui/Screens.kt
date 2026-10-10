@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Crop
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.MoreVert
@@ -1016,6 +1017,10 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 SettingSwitch(Icons.Rounded.AutoAwesome, stringResource(R.string.liquid_glass), stringResource(R.string.liquid_glass_desc), settings.liquidGlass) { vm.setLiquidGlass(it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.Fullscreen, stringResource(R.string.full_cover), stringResource(R.string.full_cover_desc), settings.fullCover) { vm.setFullCover(it) }
+                if (settings.fullCover) {
+                    HorizontalDivider(Modifier.padding(start = 56.dp))
+                    SettingSwitch(Icons.Rounded.Crop, stringResource(R.string.cover_bleed), stringResource(R.string.cover_bleed_desc), settings.coverBleed) { vm.setFlag(Flags.COVER_BLEED, it) }
+                }
                 HorizontalDivider(Modifier.padding(start = 56.dp))
                 SettingSwitch(Icons.Rounded.Lyrics, stringResource(R.string.synced_lyrics), stringResource(R.string.synced_lyrics_desc), settings.syncedLyrics) { vm.setSyncedLyrics(it) }
                 HorizontalDivider(Modifier.padding(start = 56.dp))

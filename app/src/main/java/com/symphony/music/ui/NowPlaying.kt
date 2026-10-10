@@ -276,7 +276,7 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                             MODE_QUEUE -> QueueList(state, vm, onMore)
                             MODE_LYRICS -> LyricsView(lyrics, activeLine, settings.syncedLyrics, settings.blurLyrics, lyricsStatus, lyricsError, { vm.retryLyrics() }, state.position, state.isPlaying) { vm.seekTo(it) }
                             else -> Crossfade(targetState = song, animationSpec = tween(520), modifier = Modifier.fillMaxSize(), label = "song") { s ->
-                                Cover(s, settings.fullCover, if (settings.fullCover) 1f else coverScale, settings.doubleTapSeek, { vm.seekBy(it) }, onClose)
+                                Cover(s, settings.fullCover, if (settings.fullCover) 1f else coverScale, settings.doubleTapSeek, { vm.seekBy(it) }, onClose, settings.coverBleed)
                             }
                         }
                     }
@@ -354,7 +354,7 @@ private fun currentLine(lyrics: LyricsData?, position: Long): Int {
 }
 
 @Composable
-private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boolean, onSeekBy: (Long) -> Unit, onClose: () -> Unit) {
+private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boolean, onSeekBy: (Long) -> Unit, onClose: () -> Unit, bleed: Boolean = false) {
     // Double tap on the left or right half of the cover skips 5 seconds back or forward.
     val taps = Modifier.pointerInput(doubleTap) {
         detectTapGestures(onDoubleTap = { offset ->
@@ -368,7 +368,65 @@ private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boole
             onDragEnd = { if (total > 160f) onClose() },
         ) { _, amount -> total += amount }
     }
-    if (fullCover) {
+    if (fullCover && bleed) {
+        // Edge to edge from the very top, a little taller than the space above the title.
+        // Going down, the picture turns into a blurred copy of itself, then into the backdrop.
+        BoxWithConstraints(Modifier.fillMaxSize().then(drag).then(taps)) {
+            val tall = maxHeight * 1.12f
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(align = Alignment.Top, unbounded = true)
+                    .height(tall),
+            ) {
+                if (Build.VERSION.SDK_INT >= 31) {
+                    Artwork(
+                        song.albumId,
+                        song.album,
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                            .drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        0f to Color.Transparent,
+                                        0.38f to Color.Transparent,
+                                        0.58f to Color.Black,
+                                        0.78f to Color.Black.copy(alpha = 0.55f),
+                                        0.95f to Color.Transparent,
+                                    ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            }
+                            .blur(28.dp),
+                        RectangleShape,
+                    )
+                }
+                Artwork(
+                    song.albumId,
+                    song.album,
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to Color.Black,
+                                    0.48f to Color.Black,
+                                    0.62f to Color.Black.copy(alpha = 0.6f),
+                                    0.74f to Color.Black.copy(alpha = 0.15f),
+                                    0.82f to Color.Transparent,
+                                ),
+                                blendMode = BlendMode.DstIn,
+                            )
+                        },
+                    RectangleShape,
+                )
+            }
+        }
+    } else if (fullCover) {
         // Square, centred in the space above the title, melting into the blurred backdrop at the top and bottom.
         Box(Modifier.fillMaxSize().then(drag).then(taps), contentAlignment = Alignment.Center) {
             Artwork(

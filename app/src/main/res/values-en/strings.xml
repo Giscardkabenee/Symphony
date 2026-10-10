@@ -441,4 +441,6 @@
     <string name="ap_v_faithful">Faithful to the file ✓</string>
     <string name="ap_v_faithful_desc">No processing and no resampling: you hear exactly what the lossless file contains.</string>
     <string name="ap_v_lossy_desc">No processing and no resampling. The file is compressed (MP3/AAC): that is the source\'s limit, not Symphony\'s.</string>
+    <string name="cover_bleed">Edge-to-edge cover</string>
+    <string name="cover_bleed_desc">Fills the top of the screen and blurs as it goes down, even if the sides are cut a little. Off: whole cover, centred</string>
 </resources>

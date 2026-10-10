@@ -442,4 +442,6 @@
     <string name="ap_v_faithful">Fidèle au fichier ✓</string>
     <string name="ap_v_faithful_desc">Pas de traitement ni de rééchantillonnage : tu entends exactement ce que contient le fichier sans perte.</string>
     <string name="ap_v_lossy_desc">Pas de traitement ni de rééchantillonnage. Le fichier est compressé (MP3/AAC) : c\'est la limite de la source, pas de Symphony.</string>
+    <string name="cover_bleed">Pochette bord à bord</string>
+    <string name="cover_bleed_desc">Remplit le haut de l\'écran et se floute en descendant, quitte à couper un peu les côtés. Désactivé : pochette entière et centrée</string>
 </resources>

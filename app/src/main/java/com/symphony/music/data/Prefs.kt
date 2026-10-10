@@ -32,6 +32,7 @@ object Flags {
     const val AUTOMIX = "automix"
     const val DJ_VOICE = "dj_voice"
     const val ARTIST_INFO = "artist_info"
+    const val COVER_BLEED = "cover_bleed"
 }
 
 /** Number of bands the equalizer screen offers. */
@@ -77,6 +78,8 @@ data class AppSettings(
     val headphoneOn: Boolean = true,
     val djVoice: Boolean = true,
     val artistInfo: Boolean = true,
+    /** Full-screen player: cover edge to edge (cropped) rather than whole and centred. */
+    val coverBleed: Boolean = true,
 )
 
 class Prefs(context: Context) {
@@ -117,6 +120,7 @@ class Prefs(context: Context) {
             headphoneOn = p[booleanPreferencesKey("hp_enabled")] ?: true,
             djVoice = p[booleanPreferencesKey(Flags.DJ_VOICE)] ?: true,
             artistInfo = p[booleanPreferencesKey(Flags.ARTIST_INFO)] ?: true,
+            coverBleed = p[booleanPreferencesKey(Flags.COVER_BLEED)] ?: true,
         )
     }
 
