@@ -277,10 +277,12 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                                     brush = Brush.verticalGradient(
                                         // A long, eased fade so the cover melts into the backdrop with no visible edge.
                                         0f to Color.Black,
-                                        0.55f to Color.Black,
-                                        0.68f to Color.Black.copy(alpha = 0.85f),
-                                        0.8f to Color.Black.copy(alpha = 0.5f),
-                                        0.9f to Color.Black.copy(alpha = 0.2f),
+                                        0.45f to Color.Black,
+                                        0.6f to Color.Black.copy(alpha = 0.8f),
+                                        0.74f to Color.Black.copy(alpha = 0.42f),
+                                        0.86f to Color.Black.copy(alpha = 0.12f),
+                                        // The last strip is fully clear, so the bottom edge can never show.
+                                        0.93f to Color.Transparent,
                                         1f to Color.Transparent,
                                     ),
                                     blendMode = BlendMode.DstIn,
