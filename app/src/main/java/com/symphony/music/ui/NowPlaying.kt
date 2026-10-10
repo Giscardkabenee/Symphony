@@ -255,43 +255,6 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     )
                 )
             }
-            // The cover sits behind the controls and dissolves downwards into the blurred backdrop.
-            if (settings.fullCover) {
-                val coverAlpha by animateFloatAsState(if (mode == MODE_COVER) 1f else 0f, tween(350), label = "coverAlpha")
-                Crossfade(
-                    targetState = song,
-                    animationSpec = tween(600),
-                    // Square, so the whole cover is shown (no titles cut off on the sides).
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).graphicsLayer { alpha = coverAlpha },
-                    label = "coverArt",
-                ) { s ->
-                    Artwork(
-                        s.albumId,
-                        s.album,
-                        Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                            .drawWithContent {
-                                drawContent()
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        // A long, eased fade so the cover melts into the backdrop with no visible edge.
-                                        0f to Color.Black,
-                                        0.45f to Color.Black,
-                                        0.6f to Color.Black.copy(alpha = 0.8f),
-                                        0.74f to Color.Black.copy(alpha = 0.42f),
-                                        0.86f to Color.Black.copy(alpha = 0.12f),
-                                        // The last strip is fully clear, so the bottom edge can never show.
-                                        0.93f to Color.Transparent,
-                                        1f to Color.Transparent,
-                                    ),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                            },
-                        RectangleShape,
-                    )
-                }
-            }
             // A soft shade under the status bar so the time, network and battery stay readable on any cover.
             Box(
                 Modifier
@@ -403,8 +366,33 @@ private fun Cover(song: Song, fullCover: Boolean, scale: Float, doubleTap: Boole
         ) { _, amount -> total += amount }
     }
     if (fullCover) {
-        // The artwork itself is drawn behind the whole player; this area only takes the gestures.
-        Box(Modifier.fillMaxSize().then(drag).then(taps))
+        // Square, centred in the space above the title, melting into the blurred backdrop at the top and bottom.
+        Box(Modifier.fillMaxSize().then(drag).then(taps), contentAlignment = Alignment.Center) {
+            Artwork(
+                song.albumId,
+                song.album,
+                Modifier
+                    .aspectRatio(1f)
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                0.1f to Color.Black.copy(alpha = 0.55f),
+                                0.22f to Color.Black,
+                                0.62f to Color.Black,
+                                0.74f to Color.Black.copy(alpha = 0.7f),
+                                0.86f to Color.Black.copy(alpha = 0.3f),
+                                0.95f to Color.Transparent,
+                                1f to Color.Transparent,
+                            ),
+                            blendMode = BlendMode.DstIn,
+                        )
+                    },
+                RectangleShape,
+            )
+        }
     } else {
         Box(Modifier.fillMaxSize().then(drag).then(taps).statusBarsPadding().padding(32.dp), contentAlignment = Alignment.Center) {
             Artwork(
