@@ -268,10 +268,11 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
         val opening = playerOpen && state.current != null
         val openness by animateFloatAsState(
             targetValue = if (opening) 1f else 0f,
-            animationSpec = if (opening) spring(dampingRatio = 0.86f, stiffness = 300f) else spring(dampingRatio = 1f, stiffness = 420f),
+            animationSpec = if (opening) spring(dampingRatio = 0.88f, stiffness = 230f) else spring(dampingRatio = 1f, stiffness = 320f),
             label = "open",
         )
         val nowSong = state.current
+        val sheetColor = MaterialTheme.colorScheme.surfaceContainerHigh
         if (openness > 0.001f && nowSong != null) {
             val p = openness
             Box(
@@ -288,13 +289,18 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
                         val path = androidx.compose.ui.graphics.Path().apply {
                             addRoundRect(androidx.compose.ui.geometry.RoundRect(l, t, r, b, androidx.compose.ui.geometry.CornerRadius(radius)))
                         }
-                        clipPath(path) { this@drawWithContent.drawContent() }
+                        clipPath(path) {
+                            // The sheet itself, a plain card while it is still small.
+                            drawRect(sheetColor)
+                            this@drawWithContent.drawContent()
+                        }
                     },
             ) {
+                // The player's content only shows once the sheet is big enough, so nothing is squeezed.
                 Box(
                     Modifier.fillMaxSize().graphicsLayer {
-                        alpha = (p * 3f).coerceIn(0f, 1f)
-                        translationY = (1f - p) * 48.dp.toPx()
+                        alpha = ((p - 0.35f) / 0.45f).coerceIn(0f, 1f)
+                        translationY = (1f - p) * 36.dp.toPx()
                     },
                 ) {
                     NowPlaying(
