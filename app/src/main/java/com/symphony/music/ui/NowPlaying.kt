@@ -201,6 +201,7 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
         }
     }
     val activeLine = remember(lyrics, state.position) { currentLine(lyrics, state.position) }
+    var showPath by remember { mutableStateOf(false) }
 
     CompositionLocalProvider(LocalContentColor provides Color.White) {
         Box(
@@ -323,7 +324,9 @@ fun NowPlaying(vm: PlayerViewModel, onClose: () -> Unit, onMore: (Song) -> Unit,
                     onMode = openMode,
                     onMore = { onMore(song) },
                     onArtist = { onArtist(song.artist) },
+                    onQuality = { showPath = true },
                 )
+                if (showPath) AudioPathSheet(song, settings) { showPath = false }
             }
         }
     }
@@ -694,6 +697,7 @@ private fun Controls(
     onMode: (Int) -> Unit,
     onMore: () -> Unit,
     onArtist: () -> Unit,
+    onQuality: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 28.dp, end = 28.dp, top = 8.dp, bottom = 16.dp)) {
         if (mode != MODE_QUEUE) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -765,7 +769,11 @@ private fun Controls(
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatTime(shown.toLong()), style = MaterialTheme.typography.labelMedium, color = Soft)
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Touch the quality label to see the sound's whole path.
+            Row(
+                Modifier.clip(CircleShape).clickable(onClickLabel = stringResource(R.string.ap_title), onClick = onQuality).padding(horizontal = 8.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Icon(Icons.Rounded.Headphones, contentDescription = null, tint = Soft, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(qualityLabel(song), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = Soft)

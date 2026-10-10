@@ -107,6 +107,34 @@ class PlaybackService : MediaSessionService() {
                 decoderReuseEvaluation: DecoderReuseEvaluation?,
             ) {
                 PlaybackInfo.sampleRate.value = format.sampleRate
+                PlaybackInfo.input.value = PlaybackInfo.Input(
+                    mime = format.sampleMimeType,
+                    sampleRate = format.sampleRate,
+                    channels = format.channelCount,
+                    bitrate = if (format.averageBitrate > 0) format.averageBitrate else format.bitrate,
+                    pcmEncoding = format.pcmEncoding,
+                )
+            }
+
+            override fun onAudioDecoderInitialized(
+                eventTime: AnalyticsListener.EventTime,
+                decoderName: String,
+                initializedTimestampMs: Long,
+                initializationDurationMs: Long,
+            ) {
+                PlaybackInfo.decoder.value = decoderName
+            }
+
+            override fun onAudioTrackInitialized(
+                eventTime: AnalyticsListener.EventTime,
+                audioTrackConfig: androidx.media3.exoplayer.audio.AudioSink.AudioTrackConfig,
+            ) {
+                PlaybackInfo.output.value = PlaybackInfo.Output(
+                    encoding = audioTrackConfig.encoding,
+                    sampleRate = audioTrackConfig.sampleRate,
+                    channels = Integer.bitCount(audioTrackConfig.channelConfig),
+                    offload = audioTrackConfig.offload,
+                )
             }
         })
         (getSystemService(AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(deviceCallback, null)

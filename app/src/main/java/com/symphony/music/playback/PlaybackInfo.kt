@@ -12,4 +12,16 @@ object PlaybackInfo {
 
     /** Audio session of the running player, for the phone's own effects panel. */
     val audioSessionId = MutableStateFlow(0)
+
+    /** Name of the decoder reading the current song (for the audio path sheet). */
+    val decoder = MutableStateFlow<String?>(null)
+
+    /** What the song looks like when it enters the player. */
+    val input = MutableStateFlow<Input?>(null)
+
+    /** How the player hands the sound to Android. */
+    val output = MutableStateFlow<Output?>(null)
+
+    data class Input(val mime: String?, val sampleRate: Int, val channels: Int, val bitrate: Int, val pcmEncoding: Int)
+    data class Output(val encoding: Int, val sampleRate: Int, val channels: Int, val offload: Boolean)
 }
