@@ -103,8 +103,8 @@ object ArtistInfos {
             val source = thumb.optString("source")
             if (source.isBlank() || source.contains(".svg", ignoreCase = true)) continue
             if (thumb.optInt("width") < 120) continue
-            // Ask for a sharper copy than the small default thumbnail.
-            return source.replace(Regex("/\\d+px-"), "/640px-")
+            // Wikimedia only serves its standard thumbnail sizes, so the address is used as given.
+            return source
         }
         return null
     }

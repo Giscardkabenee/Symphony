@@ -21,7 +21,7 @@ object ArtistImages {
 
     suspend fun find(context: Context, name: String): String? = withContext(Dispatchers.IO) {
         if (name.isBlank() || name == "—") return@withContext null
-        val file = File(context.filesDir, "artist_images_v2.json")
+        val file = File(context.filesDir, "artist_images_v3.json")
         load(file)
         val cached = known[name]
         if (cached != null) return@withContext cached.ifEmpty { null }
@@ -36,6 +36,17 @@ object ArtistImages {
         save(file)
         found
     }
+
+    /** The Wikipedia picture would not load: use Deezer's instead, and remember that. */
+    suspend fun fallback(context: Context, name: String): String? = withContext(Dispatchers.IO) {
+        val found = try { fetch(name) } catch (e: Exception) { return@withContext null }
+        known[name] = found ?: ""
+        save(File(context.filesDir, "artist_images_v3.json"))
+        found
+    }
+
+    /** Wikimedia refuses images to apps that don't say who they are. */
+    const val USER_AGENT = "Symphony/1.0 (https://github.com/Giscardkabenee/Symphony; Android music player)"
 
     @Synchronized
     private fun load(file: File) {

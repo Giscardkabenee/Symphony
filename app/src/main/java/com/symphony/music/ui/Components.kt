@@ -303,8 +303,11 @@ fun Artwork(
 @Composable
 fun ArtistAvatar(name: String, online: Boolean, modifier: Modifier = Modifier, shape: Shape = CircleShape) {
     val context = LocalContext.current
-    val url by produceState<String?>(null, name, online) {
-        value = if (online) ArtistImages.find(context, name) else null
+    var fellBack by remember(name) { mutableStateOf(false) }
+    val url by produceState<String?>(null, name, online, fellBack) {
+        value = if (!online) null
+        else if (fellBack) ArtistImages.fallback(context, name)
+        else ArtistImages.find(context, name)
     }
     val ring = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     Box(modifier.clip(shape).background(colorFor(name)), contentAlignment = Alignment.Center) {
@@ -316,10 +319,16 @@ fun ArtistAvatar(name: String, online: Boolean, modifier: Modifier = Modifier, s
         )
         if (url != null) {
             AsyncImage(
-                model = url,
+                model = coil.request.ImageRequest.Builder(context)
+                    .data(url)
+                    .addHeader("User-Agent", ArtistImages.USER_AGENT)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
+                // If the Wikipedia portrait can't be loaded, fall back to Deezer once.
+                onError = { if (!fellBack && url?.contains("wikimedia") == true) fellBack = true },
             )
         }
         // A fine light ring keeps dark photos from melting into a dark page.
