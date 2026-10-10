@@ -59,6 +59,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -248,6 +251,7 @@ private val eraColors = listOf(Color(0xFFB45309), Color(0xFF0F766E), Color(0xFF7
 private fun QuickTile(title: String, modifier: Modifier, onClick: () -> Unit, art: @Composable () -> Unit) {
     Row(
         modifier = modifier
+            .cascade()
             .height(58.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLowest)
@@ -379,7 +383,7 @@ fun HomeScreen(
                     items(topSongs.size) { i ->
                         val song = topSongs[i]
                         val active = state.current?.id == song.id
-                        Column(Modifier.width(136.dp).clip(RoundedCornerShape(16.dp)).clickable { vm.play(topSongs, i) }) {
+                        Column(Modifier.cascade().width(136.dp).clip(RoundedCornerShape(16.dp)).clickable { vm.play(topSongs, i) }) {
                             Artwork(song.albumId, song.album, Modifier.size(136.dp), RoundedCornerShape(16.dp))
                             Spacer(Modifier.height(6.dp))
                             Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -396,7 +400,7 @@ fun HomeScreen(
                     items(topArtists.size) { i ->
                         val artist = topArtists[i]
                         Column(
-                            modifier = Modifier.width(76.dp).clip(RoundedCornerShape(14.dp)).clickable { onArtist(artist.name) },
+                            modifier = Modifier.cascade().width(76.dp).clip(RoundedCornerShape(14.dp)).clickable { onArtist(artist.name) },
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(72.dp))
@@ -416,6 +420,7 @@ fun HomeScreen(
                     if (djSet.isNotEmpty()) item {
                         Row(
                             modifier = Modifier
+                                .cascade()
                                 .width(300.dp)
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(Brush.linearGradient(listOf(Color(0xFF050505), Color(0xFF1F1147), Color(0xFF7C3AED))))
@@ -456,6 +461,7 @@ fun HomeScreen(
                         )
                         Row(
                             modifier = Modifier
+                                .cascade()
                                 .width(300.dp)
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(Brush.linearGradient(colors))
@@ -514,6 +520,7 @@ fun HomeScreen(
                         val tint = eraColors[i % eraColors.size]
                         Column(
                             modifier = Modifier
+                                .cascade()
                                 .width(128.dp)
                                 .height(84.dp)
                                 .clip(RoundedCornerShape(20.dp))
@@ -635,7 +642,7 @@ private fun PlayButtons(onPlay: () -> Unit, onShuffle: () -> Unit, modifier: Mod
 @Composable
 private fun EntryRow(title: String, detail: String, onClick: () -> Unit, art: @Composable () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 6.dp),
+        modifier = Modifier.cascade().fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         art()
@@ -768,6 +775,7 @@ fun MusicScreen(
         mutableStateOf(List(3) { i -> store.getBoolean("music_grid_$i", i != 0) })
     }
     var creating by remember { mutableStateOf(false) }
+    val pillCenters = remember { mutableStateMapOf<Int, androidx.compose.ui.geometry.Offset>() }
     val labels = listOf(R.string.songs, R.string.tab_albums, R.string.tab_artists, R.string.playlists)
     val sortedSongs = remember(songs, sort) { sortSongs(songs, sort) }
     val sortedAlbums = remember(albums, sort) { sortAlbums(albums, sort) }
@@ -832,12 +840,14 @@ fun MusicScreen(
         // Four equal pills, so none is cut off at the edge.
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             labels.forEachIndexed { i, label ->
-                Pill(stringResource(label), tab == i, Modifier.weight(1f)) {
+                Pill(stringResource(label), tab == i, Modifier.weight(1f).onGloballyPositioned { pillCenters[i] = it.boundsInRoot().center }) {
                     tab = i
                     store.edit().putInt("music_tab", i).apply()
                 }
             }
         }
+        // A new wave rises from the touched pill each time the tab, layout or order changes.
+        Cascading(key = Triple(tab, grid, sort), origin = pillCenters[tab]) {
         if (songs.isEmpty() && tab < 3) {
             EmptyState(stringResource(R.string.empty_library), stringResource(R.string.empty_library_hint))
         } else when {
@@ -856,7 +866,7 @@ fun MusicScreen(
                 items(sortedSongs.size) { i ->
                     val song = sortedSongs[i]
                     val active = state.current?.id == song.id
-                    Column(Modifier.clip(RoundedCornerShape(14.dp)).clickable { vm.play(sortedSongs, i) }) {
+                    Column(Modifier.cascade().clip(RoundedCornerShape(14.dp)).clickable { vm.play(sortedSongs, i) }) {
                         Artwork(song.albumId, song.album, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(14.dp))
                         Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -913,7 +923,7 @@ fun MusicScreen(
                 items(sortedArtists.size) { i ->
                     val artist = sortedArtists[i]
                     Column(
-                        modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { onArtist(artist.name) },
+                        modifier = Modifier.cascade().clip(RoundedCornerShape(16.dp)).clickable { onArtist(artist.name) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         ArtistAvatar(artist.name, settings.artistPhotos, Modifier.fillMaxWidth().aspectRatio(1f))
@@ -954,6 +964,7 @@ fun MusicScreen(
                     PlaylistRow(name, settings.playlists[name]?.size ?: 0, Icons.Rounded.QueueMusic) { onPlaylist(name) }
                 }
             }
+        }
         }
     }
 

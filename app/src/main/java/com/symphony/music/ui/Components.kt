@@ -356,6 +356,7 @@ fun SongRow(
 ) {
     Row(
         modifier = Modifier
+            .cascade()
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),

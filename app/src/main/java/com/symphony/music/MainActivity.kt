@@ -85,6 +85,7 @@ import com.symphony.music.ui.FloatingBar
 import com.symphony.music.ui.HomeScreen
 import com.symphony.music.ui.MusicScreen
 import com.symphony.music.ui.LocalHaze
+import com.symphony.music.ui.Cascading
 import com.symphony.music.ui.NewPlaylistDialog
 import com.symphony.music.ui.NowPlaying
 import com.symphony.music.ui.PlaylistScreen
@@ -217,18 +218,18 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
                 else slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { it / 4 } + fadeOut(tween(200))
             },
         ) {
-            composable("home") { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum, openArtist) }
-            composable("music") { MusicScreen(vm, openAlbum, openArtist, openPlaylist, openMenu) }
-            composable("search") { SearchScreen(vm, openAlbum, openArtist, openMenu) }
+            composable("home") { Cascading { HomeScreen(vm, { nav.navigate("settings") }, openPlaylist, openAlbum, openArtist) } }
+            composable("music") { Cascading { MusicScreen(vm, openAlbum, openArtist, openPlaylist, openMenu) } }
+            composable("search") { Cascading { SearchScreen(vm, openAlbum, openArtist, openMenu) } }
             composable("settings") { SettingsScreen(vm) { nav.popBackStack() } }
             composable("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
-                AlbumScreen(vm, e.arguments?.getLong("id") ?: 0L, { nav.popBackStack() }, openMenu)
+                Cascading { AlbumScreen(vm, e.arguments?.getLong("id") ?: 0L, { nav.popBackStack() }, openMenu) }
             }
             composable("artist/{name}") { e ->
-                ArtistScreen(vm, e.arguments?.getString("name") ?: "", { nav.popBackStack() }, openAlbum, openMenu)
+                Cascading { ArtistScreen(vm, e.arguments?.getString("name") ?: "", { nav.popBackStack() }, openAlbum, openMenu) }
             }
             composable("playlist/{name}") { e ->
-                PlaylistScreen(vm, e.arguments?.getString("name") ?: "", { nav.popBackStack() }, openMenu)
+                Cascading { PlaylistScreen(vm, e.arguments?.getString("name") ?: "", { nav.popBackStack() }, openMenu) }
             }
         }
         }

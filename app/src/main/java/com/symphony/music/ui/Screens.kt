@@ -192,7 +192,7 @@ internal fun SectionHeader(text: String) {
         text = text,
         style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp),
+        modifier = Modifier.cascade().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp),
     )
 }
 
@@ -212,7 +212,7 @@ fun EmptyState(title: String, hint: String? = null) {
 
 @Composable
 internal fun AlbumCard(album: AlbumInfo, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick)) {
+    Column(modifier.cascade().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick)) {
         Artwork(album.id, album.title, Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(14.dp))
         Spacer(Modifier.height(8.dp))
         Text(album.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -377,7 +377,7 @@ internal fun LibraryEntry(icon: ImageVector, title: String, description: String,
 @Composable
 internal fun PlaylistRow(name: String, count: Int, icon: ImageVector, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 8.dp),
+        modifier = Modifier.cascade().fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -655,7 +655,7 @@ fun AlbumScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit, onMore: (Song
             val active = state.current?.id == song.id
             QueueSwipe({ vm.playNext(song) }, { vm.addToQueue(song) }) {
             Row(
-                modifier = Modifier.fillMaxWidth().clickable { vm.play(album.songs, i) }.padding(start = 20.dp, end = 8.dp),
+                modifier = Modifier.cascade().fillMaxWidth().clickable { vm.play(album.songs, i) }.padding(start = 20.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
