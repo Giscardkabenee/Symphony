@@ -272,7 +272,13 @@ private fun MainScaffold(vm: PlayerViewModel, settings: AppSettings) {
             label = "open",
         )
         val nowSong = state.current
-        val sheetColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        // The growing sheet takes the cover's colour, the same the player itself uses, so the change is seamless.
+        val morphContext = androidx.compose.ui.platform.LocalContext.current
+        val coverTint by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.Color?>(null, state.current?.albumId) {
+            value = state.current?.let { com.symphony.music.ui.dominantColor(morphContext, it.artUri) }
+        }
+        val fallbackSheet = MaterialTheme.colorScheme.surfaceContainerHigh
+        val sheetColor = coverTint?.let { androidx.compose.ui.graphics.lerp(it, androidx.compose.ui.graphics.Color.Black, 0.45f) } ?: fallbackSheet
         if (openness > 0.001f && nowSong != null) {
             val p = openness
             Box(
