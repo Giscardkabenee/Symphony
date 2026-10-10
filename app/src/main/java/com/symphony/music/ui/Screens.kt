@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -267,7 +268,7 @@ internal fun StackCard(title: String, songs: List<Song>, onClick: () -> Unit) {
             Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    text = stringResource(R.string.songs_count, songs.size),
+                    text = pluralStringResource(R.plurals.songs_count, songs.size, songs.size),
                     color = Color.White.copy(alpha = 0.82f),
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -332,7 +333,7 @@ fun ArtistsScreen(vm: PlayerViewModel, onArtist: (String) -> Unit) {
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    text = stringResource(R.string.songs_count, artist.songs.size),
+                    text = pluralStringResource(R.plurals.songs_count, artist.songs.size, artist.songs.size),
                     maxLines = 1,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -387,7 +388,7 @@ internal fun PlaylistRow(name: String, count: Int, icon: ImageVector, onClick: (
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-            Text(stringResource(R.string.songs_count, count), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(pluralStringResource(R.plurals.songs_count, count, count), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -638,7 +639,7 @@ fun AlbumScreen(vm: PlayerViewModel, id: Long, onBack: () -> Unit, onMore: (Song
     val subtitle = buildString {
         append(album.artist)
         if (album.year > 0) append(" · ").append(album.year)
-        append(" · ").append(stringResource(R.string.songs_count, album.songs.size))
+        append(" · ").append(pluralStringResource(R.plurals.songs_count, album.songs.size, album.songs.size))
         append(" · ").append(minutes).append(" min")
     }
     ImmersivePage(album.id, album.title) {
@@ -694,7 +695,7 @@ fun ArtistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onAlbum:
     }
     val albumIds = remember(artist) { artist.songs.map { it.albumId }.toSet() }
     val artistAlbums = albums.filter { it.id in albumIds }
-    val subtitle = stringResource(R.string.albums_count, artist.albumCount) + " · " + stringResource(R.string.songs_count, artist.songs.size)
+    val subtitle = pluralStringResource(R.plurals.albums_count, artist.albumCount, artist.albumCount) + " · " + pluralStringResource(R.plurals.songs_count, artist.songs.size, artist.songs.size)
     val context = LocalContext.current
     val info by produceState<com.symphony.music.data.ArtistBio?>(null, artist.name, settings.artistInfo) {
         value = if (settings.artistInfo) com.symphony.music.data.ArtistInfos.find(context, artist.name) else null
@@ -782,7 +783,7 @@ fun PlaylistScreen(vm: PlayerViewModel, name: String, onBack: () -> Unit, onMore
         else -> name
     }
     val minutes = songs.sumOf { it.duration } / 60_000
-    val subtitle = stringResource(R.string.songs_count, songs.size) + " · " + minutes + " min"
+    val subtitle = pluralStringResource(R.plurals.songs_count, songs.size, songs.size) + " · " + minutes + " min"
     // Playlists you made (and Favourites) can be put in order by dragging the handle.
     var order by remember(songs) { mutableStateOf(songs.withIndex().toList()) }
     val listState = rememberLazyListState()

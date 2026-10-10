@@ -21,7 +21,7 @@ object ArtistImages {
 
     suspend fun find(context: Context, name: String): String? = withContext(Dispatchers.IO) {
         if (name.isBlank() || name == "—") return@withContext null
-        val file = File(context.filesDir, "artist_images_v3.json")
+        val file = File(context.filesDir, "artist_images_v4.json")
         load(file)
         val cached = known[name]
         if (cached != null) return@withContext cached.ifEmpty { null }
@@ -41,7 +41,7 @@ object ArtistImages {
     suspend fun fallback(context: Context, name: String): String? = withContext(Dispatchers.IO) {
         val found = try { fetch(name) } catch (e: Exception) { return@withContext null }
         known[name] = found ?: ""
-        save(File(context.filesDir, "artist_images_v3.json"))
+        save(File(context.filesDir, "artist_images_v4.json"))
         found
     }
 

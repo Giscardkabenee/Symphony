@@ -40,7 +40,7 @@ object ArtistInfos {
 
     suspend fun find(context: Context, name: String): ArtistBio? = withContext(Dispatchers.IO) {
         if (name.isBlank() || name == "—") return@withContext null
-        val dir = File(context.filesDir, "artist_info").apply { mkdirs() }
+        val dir = File(context.filesDir, "artist_info_v2").apply { mkdirs() }
         val file = File(dir, Integer.toHexString(name.lowercase().hashCode()) + ".json")
         val cached = memory[name] ?: runCatching {
             val json = JSONObject(file.readText())
@@ -115,7 +115,8 @@ object ArtistInfos {
             val summary = get("https://$lang.wikipedia.org/api/rest_v1/page/summary/" + enc(title.replace(' ', '_')))
                 ?.let { JSONObject(it) } ?: return false
             if (summary.optString("type") == "disambiguation") return false
-            if (!plain(summary.optString("title")).contains(plain(name))) return false
+            // Exactly the artist's name: "Franco" must not land on another Franco.
+            if (plain(summary.optString("title")) != plain(name)) return false
             val about = summary.optString("description") + " " + summary.optString("extract").take(400)
             return musicWords.containsMatchIn(about)
         }
@@ -127,7 +128,7 @@ object ArtistInfos {
         val hits = JSONObject(search).optJSONObject("query")?.optJSONArray("search") ?: return null
         for (i in 0 until hits.length()) {
             val title = hits.getJSONObject(i).optString("title")
-            if (plain(title).contains(plain(name)) && fits(title)) return title
+            if (plain(title) == plain(name) && fits(title)) return title
         }
         return null
     }

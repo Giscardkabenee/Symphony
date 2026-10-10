@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -198,8 +199,10 @@ private fun AnimatedHeader(titles: List<String>, lines: List<String>, action: @C
         start = androidx.compose.ui.geometry.Offset(sweep, 0f),
         end = androidx.compose.ui.geometry.Offset(sweep + 700f, 120f),
     )
+    val page = MaterialTheme.colorScheme.background
+    Column(Modifier.fillMaxWidth()) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)).statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().background(page).statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -232,6 +235,9 @@ private fun AnimatedHeader(titles: List<String>, lines: List<String>, action: @C
             }
         }
         action()
+    }
+    // Content scrolling under the title fades out instead of being cut by a hard edge.
+    Box(Modifier.fillMaxWidth().height(16.dp).background(Brush.verticalGradient(listOf(page, page.copy(alpha = 0f)))))
     }
 }
 
@@ -424,7 +430,7 @@ fun HomeScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(stringResource(R.string.dj_title), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, maxLines = 1)
                                 Text(stringResource(R.string.dj_desc), color = Color.White.copy(alpha = 0.75f), maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 13.sp)
-                                Text(stringResource(R.string.songs_count, djSet.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                                Text(pluralStringResource(R.plurals.songs_count, djSet.size, djSet.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                             }
                             Box(
                                 Modifier.size(44.dp).clip(CircleShape).background(Color.White).clickable { vm.playDj(djSet) },
@@ -477,7 +483,7 @@ fun HomeScreen(
                                     overflow = TextOverflow.Ellipsis,
                                     fontSize = 13.sp,
                                 )
-                                Text(stringResource(R.string.songs_count, mix.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                                Text(pluralStringResource(R.plurals.songs_count, mix.size, mix.size), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                             }
                             Box(
                                 Modifier.size(44.dp).clip(CircleShape).background(Color.White).clickable { vm.play(mix, 0) },
@@ -517,7 +523,7 @@ fun HomeScreen(
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(stringResource(R.string.era_label, decade % 100), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
-                            Text(stringResource(R.string.songs_count, list.size), color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                            Text(pluralStringResource(R.plurals.songs_count, list.size, list.size), color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
                         }
                     }
                 }
@@ -892,7 +898,7 @@ fun MusicScreen(
             tab == 1 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
                 items(sortedAlbums.size) { i ->
                     val album = sortedAlbums[i]
-                    EntryRow(album.title, album.artist + " · " + stringResource(R.string.songs_count, album.songs.size), { onAlbum(album.id) }) {
+                    EntryRow(album.title, album.artist + " · " + pluralStringResource(R.plurals.songs_count, album.songs.size, album.songs.size), { onAlbum(album.id) }) {
                         Artwork(album.id, album.title, Modifier.size(56.dp), RoundedCornerShape(10.dp))
                     }
                 }
@@ -913,14 +919,14 @@ fun MusicScreen(
                         ArtistAvatar(artist.name, settings.artistPhotos, Modifier.fillMaxWidth().aspectRatio(1f))
                         Spacer(Modifier.height(8.dp))
                         Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                        Text(stringResource(R.string.songs_count, artist.songs.size), maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(pluralStringResource(R.plurals.songs_count, artist.songs.size, artist.songs.size), maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
             tab == 2 -> LazyColumn(contentPadding = PaddingValues(top = 6.dp, bottom = BarSpace)) {
                 items(sortedArtists.size) { i ->
                     val artist = sortedArtists[i]
-                    EntryRow(artist.name, stringResource(R.string.songs_count, artist.songs.size), { onArtist(artist.name) }) {
+                    EntryRow(artist.name, pluralStringResource(R.plurals.songs_count, artist.songs.size, artist.songs.size), { onArtist(artist.name) }) {
                         ArtistAvatar(artist.name, settings.artistPhotos, Modifier.size(56.dp))
                     }
                 }
@@ -1050,7 +1056,7 @@ fun SearchScreen(
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                        Text(stringResource(R.string.songs_count, artist.songs.size), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(pluralStringResource(R.plurals.songs_count, artist.songs.size, artist.songs.size), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

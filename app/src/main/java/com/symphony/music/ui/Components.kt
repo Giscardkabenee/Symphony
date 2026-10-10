@@ -330,6 +330,8 @@ fun ArtistAvatar(name: String, online: Boolean, modifier: Modifier = Modifier, s
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                // Portraits are usually taller than wide: keep the face, not the chest.
+                alignment = androidx.compose.ui.BiasAlignment(0f, -0.7f),
                 modifier = Modifier.matchParentSize(),
                 // If the Wikipedia portrait can't be loaded, fall back to Deezer once.
                 onError = { if (!fellBack && url?.contains("wikimedia") == true) fellBack = true },
