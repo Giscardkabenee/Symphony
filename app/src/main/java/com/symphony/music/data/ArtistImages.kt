@@ -21,12 +21,13 @@ object ArtistImages {
 
     suspend fun find(context: Context, name: String): String? = withContext(Dispatchers.IO) {
         if (name.isBlank() || name == "—") return@withContext null
-        val file = File(context.filesDir, "artist_images.json")
+        val file = File(context.filesDir, "artist_images_v2.json")
         load(file)
         val cached = known[name]
         if (cached != null) return@withContext cached.ifEmpty { null }
         val found = try {
-            fetch(name)
+            // A true portrait from Wikipedia first; Deezer's picture is sometimes just an album cover.
+            runCatching { ArtistInfos.wikiPortrait(name) }.getOrNull() ?: fetch(name)
         } catch (e: Exception) {
             // Offline: try again another time rather than remembering a miss.
             return@withContext null

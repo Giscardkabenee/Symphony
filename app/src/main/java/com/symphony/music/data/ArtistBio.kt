@@ -93,6 +93,22 @@ object ArtistInfos {
         return null
     }
 
+    /** A real portrait from the artist's Wikipedia article, when it has one (not a logo or drawing). */
+    internal fun wikiPortrait(name: String): String? {
+        for (lang in listOf("fr", "en")) {
+            val title = wikiTitle(lang, name) ?: continue
+            val summary = get("https://$lang.wikipedia.org/api/rest_v1/page/summary/" + enc(title.replace(' ', '_')))
+                ?.let { JSONObject(it) } ?: continue
+            val thumb = summary.optJSONObject("thumbnail") ?: continue
+            val source = thumb.optString("source")
+            if (source.isBlank() || source.contains(".svg", ignoreCase = true)) continue
+            if (thumb.optInt("width") < 120) continue
+            // Ask for a sharper copy than the small default thumbnail.
+            return source.replace(Regex("/\\d+px-"), "/640px-")
+        }
+        return null
+    }
+
     /** The article that is really about this musician, not a namesake or a disambiguation page. */
     private fun wikiTitle(lang: String, name: String): String? {
         fun fits(title: String): Boolean {

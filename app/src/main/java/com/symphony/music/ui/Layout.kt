@@ -338,8 +338,15 @@ fun HomeScreen(
                     Triple(R.string.most_played, MOST_KEY, most),
                 ).forEach { (label, key, list) ->
                     val first = list.firstOrNull()
+                    // Four different covers when the list has them, so the tiles don't repeat one album.
+                    val covers = list.map { it.albumId }.distinct().take(4)
                     add(stringResource(label) to ({ onStack(key) } to @Composable {
-                        if (first != null) Artwork(first.albumId, first.album, Modifier.fillMaxSize(), RectangleShape)
+                        if (covers.size >= 4) Column(Modifier.fillMaxSize()) {
+                            for (r in 0..1) Row(Modifier.weight(1f)) {
+                                for (c in 0..1) Artwork(covers[r * 2 + c], label.toString(), Modifier.weight(1f).fillMaxHeight(), RectangleShape)
+                            }
+                        }
+                        else if (first != null) Artwork(first.albumId, first.album, Modifier.fillMaxSize(), RectangleShape)
                         else Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest))
                     }))
                 }

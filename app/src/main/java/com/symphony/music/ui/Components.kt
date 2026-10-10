@@ -306,6 +306,7 @@ fun ArtistAvatar(name: String, online: Boolean, modifier: Modifier = Modifier, s
     val url by produceState<String?>(null, name, online) {
         value = if (online) ArtistImages.find(context, name) else null
     }
+    val ring = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     Box(modifier.clip(shape).background(colorFor(name)), contentAlignment = Alignment.Center) {
         Text(
             text = name.take(1).uppercase(),
@@ -321,6 +322,8 @@ fun ArtistAvatar(name: String, online: Boolean, modifier: Modifier = Modifier, s
                 modifier = Modifier.matchParentSize(),
             )
         }
+        // A fine light ring keeps dark photos from melting into a dark page.
+        if (shape == CircleShape) Box(Modifier.matchParentSize().border(1.dp, ring, shape))
     }
 }
 
@@ -491,11 +494,22 @@ fun FloatingBar(
 ) {
     val scheme = MaterialTheme.colorScheme
     val pill = CircleShape
-    val face = scheme.surfaceContainerLowest.copy(alpha = 0.95f)
-    val edge = scheme.outlineVariant.copy(alpha = 0.45f)
+    val dark = scheme.background.luminance() < 0.5f
+    // In dark mode the bar is a lifted grey, fully opaque, and the marker a soft light grey rather than pure white.
+    val face = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest.copy(alpha = 0.95f)
+    val edge = scheme.outlineVariant.copy(alpha = if (dark) 0.3f else 0.45f)
+    val marker = if (dark) Color(0xFFD6D6DC) else scheme.onSurface
     Column(
         modifier = modifier
             .fillMaxWidth()
+            // The page fades into the background behind the bar, so nothing reads through it.
+            .background(
+                Brush.verticalGradient(
+                    0f to scheme.background.copy(alpha = 0f),
+                    0.35f to scheme.background.copy(alpha = 0.85f),
+                    1f to scheme.background,
+                )
+            )
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -596,7 +610,7 @@ fun FloatingBar(
                     .fillMaxHeight()
                     .graphicsLayer { alpha = markerAlpha }
                     .clip(pill)
-                    .background(scheme.onSurface)
+                    .background(marker)
             )
             Row(Modifier.fillMaxSize()) {
                 items.forEachIndexed { i, (r, label, icon) ->
